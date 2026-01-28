@@ -1,233 +1,91 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Loader2, ShieldCheck, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
+import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Loader2, ShieldCheck, AlertCircle, CheckCircle2, User, Mail, Lock } from 'lucide-react';
 
+// Form Schema
 const acceptInviteSchema = z.object({
-    firstName: z.string().min(2, 'First name is required'),
-    lastName: z.string().min(2, 'Last name is required'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    confirmPassword: z.string(),
+    password: z.string()
+        .min(10, 'Password must be at least 10 characters')
+        .regex(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])/, 'Password must contain 1 uppercase, 1 number, and 1 symbol'),
+    confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
 });
 
-type AcceptInviteFormValues = z.infer<typeof acceptInviteSchema>;
-
-interface InvitationData {
-    id: string;
-    email: string;
-    internal_role: string;
-    firm_id: string;
-    status: string;
-    expires_at: string;
-}
+type AcceptInviteForm = z.infer<typeof acceptInviteSchema>;
 
 export default function AcceptInvitePage() {
-    const { token } = useParams<{ token: string }>();
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [verifying, setVerifying] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [invitation, setInvitation] = useState<InvitationData | null>(null);
+    const token = searchParams.get('token');
+    const [authError, setAuthError] = useState<string | null>(null);
 
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-    } = useForm<AcceptInviteFormValues>({
-        resolver: zodResolver(acceptInviteSchema),
+    // Fetch Invite Details
+    const { data: invite, isLoading, error: inviteError } = useQuery({
+        queryKey: ['invite', token],
+        enabled: !!token,
+        queryFn: async () => {
+            // @ts-ignore - Supabase types might not have the RPC yet
+            const { data, error } = await supabase.rpc('get_invite_details', {
+                p_token: token
+            });
+
+            if (error) throw error;
+            // RPC returns an array of rows (even if it's one row), so we take the first
+            if (!data || data.length === 0) throw new Error('Invalid or expired invitation.');
+            return data[0] as { email: string; firm_name: string; role: string };
+        },
+        retry: false
     });
 
-    useEffect(() => {
-        const checkAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                // User is already logged in, redirect to dashboard
-                navigate('/dashboard', { replace: true });
-                return;
-            }
-            // Not logged in, proceed with verification
-            verifyInvitation();
-        };
+    // Form Setup
+    const { register, handleSubmit, formState: { errors } } = useForm<AcceptInviteForm>({
+        resolver: zodResolver(acceptInviteSchema)
+    });
 
-        checkAuth();
-    }, [token, navigate]);
+    // Signup Mutation
+    const signUpMutation = useMutation({
+        mutationFn: async (data: AcceptInviteForm) => {
+            if (!invite) return;
 
-    const verifyInvitation = async () => {
-        if (!token) {
-            setError('Invalid invitation link');
-            setVerifying(false);
-            return;
-        }
-
-        try {
-            const { data, error: fetchError } = await supabase
-                .from('invitations')
-                .select('*')
-                .eq('token', token)
-                .single();
-
-            if (fetchError) throw new Error('Invitation not found');
-
-            if (data.status !== 'pending') {
-                throw new Error('This invitation has already been used');
-            }
-
-            const expiresAt = new Date(data.expires_at);
-            if (expiresAt < new Date()) {
-                throw new Error('This invitation has expired');
-            }
-
-            setInvitation(data);
-        } catch (err: any) {
-            setError(err.message || 'Invalid invitation');
-        } finally {
-            setVerifying(false);
-        }
-    };
-
-    const onSubmit = async (values: AcceptInviteFormValues) => {
-        if (!invitation) return;
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            // 1. Create auth user
-            const { data: authData, error: signUpError } = await supabase.auth.signUp({
-                email: invitation.email,
-                password: values.password,
+            // 1. Sign Up (Trigger will handle role assignment)
+            const { error: signUpError } = await supabase.auth.signUp({
+                email: invite.email,
+                password: data.password,
                 options: {
                     data: {
-                        first_name: values.firstName,
-                        last_name: values.lastName,
-                    },
-                },
+                        // Pass metadata if needed, but the trigger relies on email
+                    }
+                }
             });
 
             if (signUpError) throw signUpError;
-            if (!authData.user) throw new Error('Failed to create account');
-
-            // 2. Sign in immediately to establish session
-            const { error: signInError } = await supabase.auth.signInWithPassword({
-                email: invitation.email,
-                password: values.password,
+            return true;
+        },
+        onSuccess: () => {
+            navigate('/internal/login', {
+                state: { message: 'Account created! Please check your email to confirm your account.' }
             });
-
-            if (signInError) throw signInError;
-
-            // 3. Wait a moment for the profile trigger to complete
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            // 4. Update profile with internal role and firm (trigger already created it)
-            console.log('📝 Updating profile with:', {
-                first_name: values.firstName,
-                last_name: values.lastName,
-                firm_id: invitation.firm_id,
-                internal_role: invitation.internal_role,
-                status: 'active',
-            });
-
-            const { data: updateData, error: profileError } = await supabase
-                .from('profiles')
-                .update({
-                    first_name: values.firstName,
-                    last_name: values.lastName,
-                    firm_id: invitation.firm_id,
-                    internal_role: invitation.internal_role,
-                    status: 'active',
-                })
-                .eq('id', authData.user.id)
-                .select();
-
-            if (profileError) {
-                console.error('❌ Profile update error:', profileError);
-                throw new Error(`Failed to update profile: ${profileError.message}`);
-            }
-
-            console.log('✅ Profile updated successfully:', updateData);
-
-            // Verify the update worked
-            const { data: verifyProfile } = await supabase
-                .from('profiles')
-                .select('internal_role, status, firm_id')
-                .eq('id', authData.user.id)
-                .single();
-
-            console.log('🔍 Verification - Profile after update:', verifyProfile);
-
-            if (!verifyProfile?.internal_role) {
-                console.error('❌ WARNING: internal_role is still NULL after update!');
-                throw new Error('Profile update failed - internal_role not set. Please contact administrator.');
-            }
-
-            // 5. Mark invitation as accepted
-            const { error: inviteError } = await supabase
-                .from('invitations')
-                .update({ status: 'accepted' })
-                .eq('id', invitation.id);
-
-            if (inviteError) throw inviteError;
-
-            // 6. Create audit log (commented out due to RLS issues)
-            // TODO: Fix RLS policies for audit_logs or create via backend function
-            /*
-            await supabase.from('audit_logs').insert({
-                firm_id: invitation.firm_id,
-                actor_id: authData.user.id,
-                target_user_id: authData.user.id,
-                action: 'user_accepted_invitation',
-                details: {
-                    role: invitation.internal_role,
-                    email: invitation.email,
-                },
-            });
-            */
-
-            // 7. Sign out and redirect to login
-            await supabase.auth.signOut();
-
-            // Success - redirect to login
-            navigate('/login', {
-                state: { message: 'Account created successfully! Please sign in.' },
-            });
-        } catch (err: any) {
-            console.error('Accept invitation error:', err);
-            setError(err.message || 'Failed to create account. Please try again.');
-        } finally {
-            setLoading(false);
+        },
+        onError: (error: any) => {
+            setAuthError(error.message || 'Failed to create account.');
         }
-    };
+    });
 
-    if (verifying) {
+    if (!token) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <div className="text-center">
-                    <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-sm text-slate-600 font-medium">Verifying invitation...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (error && !invitation) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-                <div className="max-w-md w-full p-8 bg-white rounded-md shadow-lg border border-slate-100 text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-red-50 rounded-md mb-4">
-                        <AlertCircle className="h-8 w-8 text-red-600" />
-                    </div>
-                    <h2 className="text-xl font-semibold text-slate-900 mb-2">Invalid Invitation</h2>
-                    <p className="text-sm text-slate-600">{error}</p>
-                    <button
-                        onClick={() => navigate('/login')}
-                        className="mt-6 px-6 h-10 bg-slate-900 text-white text-xs font-semibold uppercase tracking-wide rounded-md hover:bg-slate-800 transition-colors"
-                    >
+            <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 max-w-md w-full text-center">
+                    <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                    <h2 className="text-xl font-bold text-white mb-2">Invalid Link</h2>
+                    <p className="text-slate-400 mb-6">This invitation link is missing a token.</p>
+                    <button onClick={() => navigate('/internal/login')} className="text-sm font-bold text-red-400 hover:text-red-300">
                         Go to Login
                     </button>
                 </div>
@@ -235,164 +93,116 @@ export default function AcceptInvitePage() {
         );
     }
 
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
+                <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
+            </div>
+        );
+    }
+
+    if (inviteError || !invite) {
+        return (
+            <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 max-w-md w-full text-center">
+                    <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                    <h2 className="text-xl font-bold text-white mb-2">Invitation Expired or Invalid</h2>
+                    <p className="text-slate-400 mb-6">
+                        {(inviteError as any)?.message || "We couldn't find a valid pending invitation for this link."}
+                    </p>
+                    <button onClick={() => navigate('/internal/login')} className="text-sm font-bold text-red-400 hover:text-red-300">
+                        Return to Login
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
-            <div className="max-w-md w-full space-y-8">
+        <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Background Effects */}
+            <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-indigo-900/20 to-transparent pointer-events-none" />
+
+            <div className="w-full max-w-md bg-[#1E293B] border border-white/10 rounded-2xl shadow-2xl relative z-10 overflow-hidden">
                 {/* Header */}
-                <div className="text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-md mb-4">
-                        <ShieldCheck className="h-8 w-8 text-white" />
+                <div className="bg-indigo-600/10 border-b border-indigo-500/10 p-8 text-center">
+                    <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-500/30">
+                        <ShieldCheck className="w-8 h-8 text-indigo-400" />
                     </div>
-                    <h1 className="text-3xl font-semibold text-slate-900 uppercase tracking-tight">
-                        Welcome to CaseBridge
-                    </h1>
-                    <p className="mt-2 text-sm text-slate-600 font-medium">
-                        Complete your account setup
+                    <h1 className="text-2xl font-black text-white mb-2">Join CaseBridge</h1>
+                    <p className="text-indigo-200 text-sm">
+                        You've been invited to join <br />
+                        <strong className="text-white text-lg block mt-1">{invite.firm_name}</strong>
                     </p>
                 </div>
 
-                {/* Invitation Info */}
-                {invitation && (
-                    <div className="bg-blue-50 border border-blue-100 rounded-md p-4">
-                        <div className="flex items-start gap-3">
-                            <Mail className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-blue-900 mb-1">
-                                    You've been invited as
-                                </p>
-                                <p className="text-sm font-bold text-blue-900">{invitation.email}</p>
-                                <p className="text-xs text-blue-700 mt-1 capitalize">
-                                    Role: {invitation.internal_role.replace('_', ' ')}
-                                </p>
+                <div className="p-8">
+                    <div className="mb-6 flex flex-col gap-2">
+                        <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                            <Mail className="w-4 h-4 text-slate-400" />
+                            <div>
+                                <p className="text-xs text-slate-500 font-bold uppercase">Email</p>
+                                <p className="text-sm text-slate-300 font-medium">{invite.email}</p>
+                            </div>
+                        </div>
+                        <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
+                            <ShieldCheck className="w-4 h-4 text-slate-400" />
+                            <div>
+                                <p className="text-xs text-slate-500 font-bold uppercase">Role</p>
+                                <p className="text-sm text-slate-300 font-medium capitalize">{invite.role.replace('_', ' ')}</p>
                             </div>
                         </div>
                     </div>
-                )}
 
-                {/* Setup Form */}
-                <div className="bg-white p-8 rounded-md shadow-lg border border-slate-100">
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                        {/* Error Alert */}
-                        {error && (
-                            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-md">
-                                <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="text-sm font-bold text-red-900">Setup Failed</p>
-                                    <p className="text-xs text-red-700 mt-0.5">{error}</p>
-                                </div>
+                    <form onSubmit={handleSubmit((data) => signUpMutation.mutate(data))} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Create Password</label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                <input
+                                    type="password"
+                                    {...register('password')}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white focus:border-indigo-500 outline-none transition-colors"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Confirm Password</label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                <input
+                                    type="password"
+                                    {...register('confirmPassword')}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white focus:border-indigo-500 outline-none transition-colors"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                            {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
+                        </div>
+
+                        {authError && (
+                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+                                {authError}
                             </div>
                         )}
 
-                        {/* First Name */}
-                        <div>
-                            <label htmlFor="firstName" className="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
-                                First Name
-                            </label>
-                            <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <input
-                                    {...register('firstName')}
-                                    type="text"
-                                    id="firstName"
-                                    className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-transparent focus:bg-white focus:border-primary rounded-md text-sm font-medium transition-all outline-none"
-                                    placeholder="John"
-                                    disabled={loading}
-                                />
-                            </div>
-                            {errors.firstName && (
-                                <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.firstName.message}</p>
-                            )}
-                        </div>
-
-                        {/* Last Name */}
-                        <div>
-                            <label htmlFor="lastName" className="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
-                                Last Name
-                            </label>
-                            <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <input
-                                    {...register('lastName')}
-                                    type="text"
-                                    id="lastName"
-                                    className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-transparent focus:bg-white focus:border-primary rounded-md text-sm font-medium transition-all outline-none"
-                                    placeholder="Doe"
-                                    disabled={loading}
-                                />
-                            </div>
-                            {errors.lastName && (
-                                <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.lastName.message}</p>
-                            )}
-                        </div>
-
-                        {/* Password */}
-                        <div>
-                            <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
-                                Create Password
-                            </label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <input
-                                    {...register('password')}
-                                    type="password"
-                                    id="password"
-                                    className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-transparent focus:bg-white focus:border-primary rounded-md text-sm font-medium transition-all outline-none"
-                                    placeholder="••••••••"
-                                    disabled={loading}
-                                />
-                            </div>
-                            {errors.password && (
-                                <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.password.message}</p>
-                            )}
-                        </div>
-
-                        {/* Confirm Password */}
-                        <div>
-                            <label htmlFor="confirmPassword" className="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
-                                Confirm Password
-                            </label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <input
-                                    {...register('confirmPassword')}
-                                    type="password"
-                                    id="confirmPassword"
-                                    className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-transparent focus:bg-white focus:border-primary rounded-md text-sm font-medium transition-all outline-none"
-                                    placeholder="••••••••"
-                                    disabled={loading}
-                                />
-                            </div>
-                            {errors.confirmPassword && (
-                                <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.confirmPassword.message}</p>
-                            )}
-                        </div>
-
-                        {/* Submit Button */}
                         <button
                             type="submit"
-                            disabled={loading}
-                            className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-semibold text-sm uppercase tracking-wide rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
+                            disabled={signUpMutation.isPending}
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
                         >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Creating Account...
-                                </>
+                            {signUpMutation.isPending ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
                                 <>
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Complete Setup
+                                    Create Account <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                 </>
                             )}
                         </button>
                     </form>
-                </div>
-
-                {/* Security Notice */}
-                <div className="text-center">
-                    <p className="text-xs text-slate-400 font-medium">
-                        🔒 Your data is encrypted and secure
-                    </p>
                 </div>
             </div>
         </div>

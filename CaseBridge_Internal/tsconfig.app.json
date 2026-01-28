@@ -27,7 +27,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    /* Path Mapping */
+    /* Paths */
     "baseUrl": ".",
     "paths": {
       "@/*": [

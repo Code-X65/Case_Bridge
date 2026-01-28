@@ -1,144 +1,73 @@
-# CaseBridge Internal Operations Platform
+# React + TypeScript + Vite
 
-## Overview
-This is the **Internal Operations Platform** for CaseBridge, designed for:
-- **Admin Managers** - Firm governance and user management
-- **Case Managers** - Matter intake, assignment, and status management
-- **Associate Lawyers** - View and work on assigned cases
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Tech Stack
-- **Frontend**: React.js (Vite), TypeScript, Tailwind CSS, shadcn/ui
-- **Backend**: Supabase (PostgreSQL, Auth, Storage, Realtime)
-- **State Management**: TanStack Query
-- **Forms**: React Hook Form + Zod
-- **Icons**: Lucide React
+Currently, two official plugins are available:
 
-## Project Structure
-```
-Casebridge_Internal/
-├── src/
-│   ├── components/       # Reusable UI components
-│   ├── layouts/          # Layout components (InternalLayout)
-│   ├── pages/            # Page components
-│   │   ├── auth/         # Login, AcceptInvite
-│   │   ├── admin/        # Admin Manager module
-│   │   ├── cases/        # Case Manager module
-│   │   └── associate/    # Associate Lawyer module
-│   ├── lib/              # Utilities (supabase, helpers)
-│   └── hooks/            # Custom React hooks
-├── supabase/
-│   └── migrations/       # Database migrations
-└── public/               # Static assets
-```
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Setup Instructions
+## React Compiler
 
-### 1. Install Dependencies
-```bash
-cd Casebridge_Internal
-npm install
-```
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-### 2. Configure Environment
-Copy `.env.example` to `.env` and add your Supabase credentials:
-```
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
-### 3. Run Database Migrations
-Execute `supabase/migrations/internal_schema.sql` in your Supabase SQL Editor.
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-**IMPORTANT**: This must be run AFTER the client schema is already in place.
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-### 4. Start Development Server
-```bash
-npm run dev
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
-
-## Development Phases
-
-### ✅ PHASE 1 — FOUNDATION (COMPLETED)
-- [x] Vite + React setup
-- [x] Tailwind + shadcn configuration
-- [x] Supabase connection
-- [x] Database schema design
-- [x] RLS policies
-- [x] Base routing structure
-
-### 🔄 PHASE 2 — AUTH & INVITATIONS (NEXT)
-- [ ] Admin invite flow
-- [ ] Invite acceptance with password setup
-- [ ] Login & session handling
-- [ ] Role-based route protection
-- [ ] ProtectedRoute component
-
-### 📋 PHASE 3 — ADMIN MANAGER MODULE
-- [ ] Firm profile management
-- [ ] User management (invite/suspend/deactivate)
-- [ ] Audit log viewer
-
-### 📋 PHASE 4 — CASE MANAGER MODULE
-- [ ] Matter intake queue
-- [ ] Case detail view
-- [ ] Status updates
-- [ ] Case assignment to associates
-- [ ] Document verification
-
-### 📋 PHASE 5 — ASSOCIATE LAWYER MODULE
-- [ ] Associate dashboard
-- [ ] Assigned case views (read-only status)
-- [ ] Document uploads only
-
-### 📋 PHASE 6 — NOTIFICATIONS & LOGS
-- [ ] Notification system
-- [ ] Notification bell with unread count
-- [ ] Case timeline & logs
-
-## Key Features
-
-### Firm Isolation
-- Every internal table includes `firm_id`
-- All queries scoped by firm
-- Enforced at database level via RLS
-
-### Role-Based Access Control
-- `admin_manager` - Full firm governance
-- `case_manager` - Case flow control
-- `associate_lawyer` - View assigned work only
-
-### Security
-- Row Level Security (RLS) on all tables
-- No UI-only permission checks
-- Database-first approach
-- Full audit trail
-
-## Database Schema
-
-### Core Tables
-- `firms` - Firm information
-- `profiles` (extended) - User profiles with firm_id and internal_role
-- `invitations` - Invite-only user onboarding
-- `case_assignments` - Associate case assignments
-- `case_logs` - Case activity timeline
-- `audit_logs` - System-wide audit trail
-- `notifications` - Real-time notifications
-
-### Helper Functions
-- `is_admin_manager()` - Check if user is admin
-- `is_case_manager()` - Check if user can manage cases
-- `get_user_firm_id()` - Get current user's firm
-
-## Development Guidelines
-
-1. **Database-First**: Design table → Apply RLS → Add logs → Build UI
-2. **No Shortcuts**: No hardcoded roles, no UI-only checks
-3. **Firm Isolation**: Always scope queries by firm_id
-4. **Audit Everything**: Log all significant actions
-5. **Stop and Ask**: If unclear, stop and ask before proceeding
-
-## Related Projects
-- **Casebridge_Client** - Client-facing portal (separate codebase)
-
-## License
-Proprietary - CaseBridge Legal Platform

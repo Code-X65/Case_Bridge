@@ -1,0 +1,173 @@
+import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useNavigate } from 'react-router-dom';
+import { useInternalSession } from '@/hooks/useInternalSession';
+import { Loader2, ShieldCheck, Mail, Lock } from 'lucide-react';
+import { resolveUserHome } from '@/utils/navigation';
+
+export default function InternalLoginPage() {
+    const navigate = useNavigate();
+    const { createSession } = useInternalSession();
+
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        try {
+            // STEP 1: Authenticate with Supabase
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (authError) throw authError;
+            if (!authData.user) throw new Error('Authentication failed');
+
+            // STEP 2: Fetch Profile and check status
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('status, onboarding_state, first_login_flag')
+                .eq('id', authData.user.id)
+                .single();
+
+            if (profileError) throw profileError;
+
+            if (profile.status === 'locked') {
+                await supabase.auth.signOut();
+                navigate('/auth/locked');
+                return;
+            }
+
+            if (profile.status === 'suspended') {
+                await supabase.auth.signOut();
+                throw new Error('Your account has been suspended. Take it up with your administrator.');
+            }
+
+            // STEP 3: Fetch User Role & Firm
+            // For now, we auto-select the first active role found. 
+            // In a multi-firm scenario, we would show a selection screen here.
+            const { data: userFirmRole, error: roleError } = await supabase
+                .from('user_firm_roles')
+                .select('role, firm_id')
+                .eq('user_id', authData.user.id)
+                .eq('status', 'active')
+                .limit(1)
+                .single();
+
+            if (roleError || !userFirmRole) {
+                // No active role found
+                await supabase.auth.signOut();
+                throw new Error('You are not authorized for any firm. Please contact your administrator.');
+            }
+
+            // STEP 4: Create Internal Session
+            await createSession.mutateAsync({
+                firmId: userFirmRole.firm_id,
+                role: userFirmRole.role
+            });
+
+            // STEP 5: Redirect based on onboarding state
+            if (profile.first_login_flag) {
+                navigate('/auth/welcome');
+            } else {
+                navigate(resolveUserHome({ role: userFirmRole.role, status: profile.status }));
+            }
+
+        } catch (err: any) {
+            console.error('Login error:', err);
+            setError(err.message || 'Login failed. Please check your credentials.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-6 text-white relative overflow-hidden">
+            {/* Background Gradients */}
+            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-900/20 via-[#0F172A] to-[#0F172A]" />
+            <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[100px]" />
+
+            <div className="w-full max-w-md bg-white/5 border border-white/10 p-10 rounded-[2rem] backdrop-blur-xl relative z-10 shadow-2xl">
+                <div className="text-center mb-10">
+                    <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/10 shadow-inner">
+                        <ShieldCheck className="w-8 h-8 text-white" />
+                    </div>
+                    <h1 className="text-3xl font-black mb-2 tracking-tight">Internal Portal</h1>
+                    <p className="text-slate-400 font-medium">Secure Access for CaseBridge Staff</p>
+                </div>
+
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl mb-6 text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleLogin} className="space-y-5">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Email Address</label>
+                        <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full bg-[#1E293B] border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600 font-medium"
+                                placeholder="name@firm.com"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <div className="flex justify-between items-center mb-2 px-1">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Password</label>
+                            <a href="#" className="text-xs text-indigo-400 hover:text-indigo-300 font-bold transition-colors">Forgot?</a>
+                        </div>
+                        <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full bg-[#1E293B] border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600 font-medium"
+                                placeholder="••••••••"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-white text-slate-900 font-black uppercase tracking-widest py-4 rounded-xl hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4 shadow-lg shadow-white/5"
+                    >
+                        {loading ? (
+                            <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                Authenticating...
+                            </>
+                        ) : (
+                            'Sign In'
+                        )}
+                    </button>
+
+                    <p className="text-center text-xs text-slate-600 mt-6">
+                        Protected by enterprise-grade encryption.
+                        <br />
+                        Unauthorized access is prohibited.
+                    </p>
+                </form>
+            </div>
+
+            <div className="absolute bottom-6 text-center text-[10px] text-slate-700 font-mono">
+                CASEBRIDGE INTERNAL v2.0.0
+            </div>
+        </div>
+    );
+}

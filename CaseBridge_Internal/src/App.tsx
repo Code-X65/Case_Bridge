@@ -1,124 +1,113 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-// Components
 import ProtectedRoute from './components/ProtectedRoute';
 
-// Layouts
-import InternalLayout from './layouts/InternalLayout';
-
-// Pages
-import LoginPage from './pages/auth/LoginPage';
+// Auth Pages
+import InternalLoginPage from './pages/auth/InternalLoginPage';
+import RegisterFirmPage from './pages/auth/RegisterFirmPage';
+import EmailConfirmPage from './pages/auth/EmailConfirmPage';
+import FirstLoginWelcome from './pages/auth/FirstLoginWelcome';
+import UnauthorizedPage from './pages/auth/UnauthorizedPage';
+import LockedAccountPage from './pages/auth/LockedAccountPage';
 import AcceptInvitePage from './pages/auth/AcceptInvitePage';
-import DashboardPage from './pages/DashboardPage';
+import InternalLandingPage from './pages/internal/InternalLandingPage';
+import DashboardDispatcher from './pages/internal/DashboardDispatcher';
+import StaffManagementPage from './pages/internal/StaffManagementPage';
+import MatterManagementPage from './pages/internal/MatterManagementPage';
+import ComingSoonPage from './pages/internal/ComingSoonPage';
+import IntakeDashboard from './pages/internal/intake/IntakeDashboard';
+import IntakeReview from './pages/internal/intake/IntakeReview';
 
-// Admin Pages
-import FirmSettingsPage from './pages/admin/FirmSettingsPage';
-import TeamManagementPage from './pages/admin/TeamManagementPage';
-import AuditLogsPage from './pages/admin/AuditLogsPage';
-import EarningsPage from './pages/admin/EarningsPage';
-import NotificationsPage from './pages/NotificationsPage';
-import ProfilePage from './pages/ProfilePage';
+import MyMattersPage from './pages/internal/MyMattersPage';
+import MatterWorkspace from './pages/internal/matters/MatterWorkspace';
+import NotificationsPage from './pages/internal/NotificationsPage';
+import ProfileSettings from './pages/internal/ProfileSettings';
+import InternalCalendar from './pages/internal/InternalCalendar';
+import InternalSchedulePage from './pages/internal/InternalSchedulePage';
+import InternalDocumentVault from './pages/internal/InternalDocumentVault';
 
-// Case Pages
-import MatterIntakePage from './pages/cases/MatterIntakePage';
-import MatterDetailPage from './pages/cases/MatterDetailPage';
-import CreateMatterPage from './pages/cases/CreateMatterPage';
+import ClientLoginPage from './pages/client/ClientLoginPage';
+import ClientDashboard from './pages/client/ClientDashboard';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          {/* Public Auth Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
+          {/* Client Portal Routes */}
+          <Route path="/client/login" element={<ClientLoginPage />} />
+          <Route path="/client/dashboard" element={<ClientDashboard />} />
+
+          {/* Public Routes */}
+          <Route path="/" element={<InternalLandingPage />} />
+          <Route path="/internal/login" element={<InternalLoginPage />} />
+          <Route path="/internal/register-firm" element={<RegisterFirmPage />} />
+          <Route path="/auth/confirm" element={<EmailConfirmPage />} />
+          <Route path="/auth/accept-invite" element={<AcceptInvitePage />} />
+
+          {/* Security & Onboarding Routes */}
+          <Route path="/auth/welcome" element={<ProtectedRoute><FirstLoginWelcome /></ProtectedRoute>} />
+          <Route path="/auth/unauthorized" element={<UnauthorizedPage />} />
+          <Route path="/auth/locked" element={<LockedAccountPage />} />
+
 
           {/* Protected Internal Routes */}
           <Route
-            path="/"
+            path="/internal/dashboard"
             element={
               <ProtectedRoute>
-                <InternalLayout />
+                <DashboardDispatcher />
               </ProtectedRoute>
             }
-          >
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
+          />
+          <Route path="/internal/case-manager/dashboard" element={<ProtectedRoute><DashboardDispatcher /></ProtectedRoute>} />
+          <Route path="/internal/associate/dashboard" element={<ProtectedRoute><DashboardDispatcher /></ProtectedRoute>} />
 
-            <Route
-              path="firm-profile"
-              element={
-                <ProtectedRoute requiredRole="admin_manager">
-                  <FirmSettingsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="cases/new"
-              element={
-                <ProtectedRoute>
-                  <CreateMatterPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="users"
-              element={
-                <ProtectedRoute requiredRole="admin_manager">
-                  <TeamManagementPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="audit-logs"
-              element={
-                <ProtectedRoute requiredRole="admin_manager">
-                  <AuditLogsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="earnings"
-              element={
-                <ProtectedRoute requiredRole="admin_manager">
-                  <EarningsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="notifications"
-              element={
-                <ProtectedRoute>
-                  <NotificationsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="profile"
-              element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              }
-            />
+          {/* Intake Routes */}
+          <Route path="/intake" element={<ProtectedRoute><IntakeDashboard /></ProtectedRoute>} />
+          <Route path="/intake/:id" element={<ProtectedRoute><IntakeReview /></ProtectedRoute>} />
 
-            {/* Case Manager Routes */}
-            <Route path="cases" element={<MatterIntakePage />} />
-            <Route path="cases/:id" element={<MatterDetailPage />} />
-          </Route>
+          <Route
+            path="/internal/staff-management"
+            element={
+              <ProtectedRoute>
+                <StaffManagementPage />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Case Manager Routes */}
+          <Route path="/internal/case-manager/matters" element={<ProtectedRoute><MatterManagementPage /></ProtectedRoute>} />
+          <Route path="/internal/case-manager/clients" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/case-manager/calendar" element={<ProtectedRoute><InternalCalendar /></ProtectedRoute>} />
+          <Route path="/internal/case-manager/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
+          <Route path="/internal/case-manager/tasks" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/case-manager/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+
+
+
+          {/* Associate Routes */}
+          <Route path="/internal/associate/matters" element={<ProtectedRoute><MyMattersPage /></ProtectedRoute>} />
+          <Route path="/internal/associate/schedule" element={<ProtectedRoute><InternalSchedulePage /></ProtectedRoute>} />
+          <Route path="/internal/associate/tasks" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/associate/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
+          <Route path="/internal/associate/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+
+          {/* Coming Soon Placeholders (Admin & General) */}
+          <Route path="/internal/firm-profile" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/cases" element={<ProtectedRoute><MatterManagementPage /></ProtectedRoute>} />
+          <Route path="/internal/clients" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
+          <Route path="/internal/billing" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/reports" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/settings" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
+          <Route path="/internal/audit-logs" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/security" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+          <Route path="/internal/matter/:id" element={<ProtectedRoute><MatterWorkspace /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

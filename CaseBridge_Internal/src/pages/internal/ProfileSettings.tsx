@@ -25,6 +25,8 @@ export default function ProfileSettings() {
         queryKey: ['my_profile', session?.user_id],
         enabled: !!session?.user_id,
         queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*, firm:user_firm_roles(firm:firm_id(name))')
@@ -38,7 +40,7 @@ export default function ProfileSettings() {
             setTimezone(data.timezone || 'UTC');
             setMeetingType(data.preferred_meeting_type || 'virtual');
 
-            return data;
+            return { ...data, email: user?.email };
         }
     });
 
@@ -93,7 +95,7 @@ export default function ProfileSettings() {
                                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Legal Identity</label>
                                 <p className="text-2xl font-bold text-white tracking-tight">{profile?.full_name}</p>
                                 <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
-                                    <Mail size={12} className="text-slate-500" /> {session?.email}
+                                    <Mail size={12} className="text-slate-500" /> {profile?.email}
                                 </p>
                             </div>
                             <div>

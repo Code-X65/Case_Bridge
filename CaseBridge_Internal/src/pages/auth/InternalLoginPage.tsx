@@ -1,16 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useInternalSession } from '@/hooks/useInternalSession';
-import { Loader2, ShieldCheck, Mail, Lock } from 'lucide-react';
+import { Loader2, ShieldCheck, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { resolveUserHome } from '@/utils/navigation';
 
 export default function InternalLoginPage() {
+    const queryClient = useQueryClient();
     const navigate = useNavigate();
-    const { createSession } = useInternalSession();
+    const { session, createSession } = useInternalSession();
+
+    useEffect(() => {
+        if (session) {
+            navigate('/internal/dashboard');
+        }
+    }, [session, navigate]);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -34,9 +43,26 @@ export default function InternalLoginPage() {
                 .from('profiles')
                 .select('status, onboarding_state, first_login_flag')
                 .eq('id', authData.user.id)
-                .single();
+                .maybeSingle();
 
             if (profileError) throw profileError;
+
+            if (!profile) {
+                // Check if they have a pending registration
+                const { data: pendingReg } = await supabase
+                    .from('pending_firm_registrations')
+                    .select('id')
+                    .eq('user_id', authData.user.id)
+                    .maybeSingle();
+
+                await supabase.auth.signOut();
+
+                if (pendingReg) {
+                    throw new Error('Your firm registration is pending approval.');
+                }
+
+                throw new Error('User profile not found. Please contact support.');
+            }
 
             if (profile.status === 'locked') {
                 await supabase.auth.signOut();
@@ -67,10 +93,13 @@ export default function InternalLoginPage() {
             }
 
             // STEP 4: Create Internal Session
-            await createSession.mutateAsync({
+            const newSession = await createSession.mutateAsync({
                 firmId: userFirmRole.firm_id,
                 role: userFirmRole.role
             });
+
+            // CRITICAL: Manually update cache to prevent race condition on redirect
+            queryClient.setQueryData(['internal_session'], newSession);
 
             // STEP 5: Redirect based on onboarding state
             if (profile.first_login_flag) {
@@ -132,13 +161,20 @@ export default function InternalLoginPage() {
                         <div className="relative">
                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                             <input
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-[#1E293B] border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600 font-medium"
+                                className="w-full bg-[#1E293B] border border-slate-700 rounded-xl py-3.5 pl-12 pr-12 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600 font-medium"
                                 placeholder="••••••••"
                                 required
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                            >
+                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
                         </div>
                     </div>
 

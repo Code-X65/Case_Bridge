@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import PublicRoute from './components/PublicRoute';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
 import VerifyEmail from './pages/VerifyEmail';
@@ -16,6 +17,11 @@ import CaseDetail from './pages/CaseDetail';
 import GlobalDocuments from './pages/GlobalDocuments';
 import NotificationsPage from './pages/NotificationsPage';
 import ScheduleMeeting from './pages/ScheduleMeeting';
+import SelectIntakePlan from './pages/billing/SelectIntakePlan';
+import InvoicePaymentPage from './pages/billing/InvoicePaymentPage';
+import InvoicesPage from './pages/billing/InvoicesPage';
+import LandingPage from './pages/LandingPage';
+import InternalLandingPage from './pages/InternalLandingPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient();
@@ -26,8 +32,13 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/login" element={<Login />} />
+            <Route element={<PublicRoute />}>
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+            </Route>
+
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/email-verification-pending" element={<EmailVerificationPending />} />
             <Route path="/onboarding" element={<Onboarding />} />
@@ -40,9 +51,11 @@ function App() {
             <Route path="/documents" element={<GlobalDocuments />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/cases/new" element={<NewCase />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/billing/plans" element={<SelectIntakePlan />} />
+            <Route path="/billing/invoices/:id/pay" element={<InvoicePaymentPage />} />
+            <Route path="/billing/history" element={<InvoicesPage />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/firm" element={<InternalLandingPage />} />
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>

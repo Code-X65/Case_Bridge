@@ -38,7 +38,8 @@ export default function MatterWorkspace() {
                     *,
                     assignee:assigned_associate ( id, full_name, email ),
                     case_manager:assigned_case_manager ( id, full_name ),
-                    client:client_id ( id, first_name, last_name, email, phone )
+                    client:client_id ( id, first_name, last_name, email, phone ),
+                    case_report:case_report_id ( id, intake_plan ) 
                 `)
                 .eq('id', id)
                 .single();
@@ -104,7 +105,7 @@ export default function MatterWorkspace() {
                 .from('case_meetings')
                 .select('*')
                 .eq('case_id', id)
-                .order('scheduled_start', { ascending: true });
+                .order('proposed_start', { ascending: true });
             if (error) throw error;
             return data || [];
         }
@@ -146,7 +147,8 @@ export default function MatterWorkspace() {
 
                 if (selectedFiles.length > 0) {
                     for (const file of selectedFiles) {
-                        const filePath = `matters/${id}/updates/${update.id}/${file.name}`;
+                        const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                        const filePath = `matters/${id}/updates/${update.id}/${sanitizedName}`;
                         await supabase.storage.from('case_documents').upload(filePath, file);
 
                         const { data: doc } = await supabase
@@ -250,6 +252,14 @@ export default function MatterWorkspace() {
                                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${getLifecycleColor(matter.lifecycle_state)}`}>
                                     {matter.lifecycle_state?.replace('_', ' ')}
                                 </span>
+                                {matter.case_report?.intake_plan && (
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border flex items-center gap-2 ${matter.case_report.intake_plan === 'premium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                        matter.case_report.intake_plan === 'standard' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                                            'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                        }`}>
+                                        <Clock size={12} /> {matter.case_report.intake_plan} Intake
+                                    </span>
+                                )}
                             </div>
                             <p className="text-slate-400 flex items-center gap-2 text-sm">
                                 <ShieldCheck className="w-4 h-4" />
@@ -416,9 +426,10 @@ export default function MatterWorkspace() {
                                     meetings?.map((meeting: any) => (
                                         <div key={meeting.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-blue-500/20 transition-all">
                                             <div className="flex items-center justify-between mb-2">
-                                                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${meeting.status === 'scheduled' ? 'bg-blue-500/10 text-blue-400' :
-                                                    meeting.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
-                                                        'bg-red-500/10 text-red-400'
+                                                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${meeting.status === 'requested' ? 'bg-amber-500/10 text-amber-500' :
+                                                    meeting.status === 'accepted' ? 'bg-blue-500/10 text-blue-400' :
+                                                        meeting.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
+                                                            'bg-red-500/10 text-red-500'
                                                     }`}>
                                                     {meeting.status}
                                                 </span>
@@ -426,13 +437,12 @@ export default function MatterWorkspace() {
                                             </div>
                                             <p className="text-sm font-bold text-white mb-3 flex items-center gap-2">
                                                 <Clock size={14} className="text-slate-500" />
-                                                {new Date(meeting.scheduled_start).toLocaleDateString()}
+                                                {new Date(meeting.confirmed_start || meeting.proposed_start).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                                             </p>
 
-                                            {isCaseManager && meeting.status === 'scheduled' && (
+                                            {(isCaseManager || session?.user_id === meeting.lawyer_user_id) && meeting.status === 'requested' && (
                                                 <div className="flex items-center gap-2 pt-3 border-t border-white/5">
-                                                    <button onClick={() => updateMeetingStatus.mutate({ meetingId: meeting.id, status: 'completed' })} className="flex-1 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[10px] font-black uppercase rounded-lg transition-all">Complete</button>
-                                                    <button onClick={() => updateMeetingStatus.mutate({ meetingId: meeting.id, status: 'cancelled' })} className="flex-1 py-1.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white text-[10px] font-black uppercase rounded-lg transition-all">Cancel</button>
+                                                    <button onClick={() => navigate('/internal/schedule')} className="flex-1 py-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white text-[10px] font-black uppercase rounded-lg transition-all text-center">Manage</button>
                                                 </div>
                                             )}
                                         </div>

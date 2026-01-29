@@ -13,6 +13,8 @@ export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProp
     const { session } = useInternalSession();
     const queryClient = useQueryClient();
     const [email, setEmail] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [role, setRole] = useState<'case_manager' | 'associate_lawyer'>('associate_lawyer');
     const [generatedLink, setGeneratedLink] = useState<string | null>(null);
 
@@ -20,10 +22,13 @@ export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProp
         mutationFn: async () => {
             if (!session) throw new Error('No session');
 
+            // Using the updated RPC signature covering names
             const { data, error } = await supabase.rpc('create_secure_invitation', {
                 p_email: email,
                 p_role: role,
-                p_firm_id: session.firm_id
+                p_firm_id: session.firm_id,
+                p_first_name: firstName,
+                p_last_name: lastName
             });
 
             if (error) throw error;
@@ -56,6 +61,31 @@ export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProp
 
                 {!generatedLink ? (
                     <form onSubmit={(e) => { e.preventDefault(); inviteMutation.mutate(); }} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">First Name</label>
+                                <input
+                                    type="text"
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:border-indigo-500 outline-none"
+                                    placeholder="Jane"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Last Name</label>
+                                <input
+                                    type="text"
+                                    value={lastName}
+                                    onChange={(e) => setLastName(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:border-indigo-500 outline-none"
+                                    placeholder="Doe"
+                                    required
+                                />
+                            </div>
+                        </div>
+
                         <div>
                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Email Address</label>
                             <input

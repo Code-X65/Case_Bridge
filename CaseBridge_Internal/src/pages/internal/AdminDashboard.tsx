@@ -128,16 +128,35 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
 
-                            {/* Placeholder Steps */}
-                            <div className="flex items-center gap-4 p-4 rounded-xl opacity-50">
-                                <Circle className="w-6 h-6 text-slate-600" />
-                                <div>
-                                    <h4 className="font-bold text-slate-300">Complete Firm Profile</h4>
-                                    <p className="text-sm text-slate-500">Add your logo and office details.</p>
+                            {/* Step 2: Complete Firm Profile */}
+                            <div className={`flex items-start gap-4 p-4 rounded-xl border transition-all ${firm?.website || firm?.logo_url
+                                    ? 'bg-green-500/10 border-green-500/20'
+                                    : 'bg-[#0F172A] border-white/5'
+                                }`}>
+                                <div className="mt-1">
+                                    {(firm?.website || firm?.logo_url) ? (
+                                        <CheckCircle2 className="w-6 h-6 text-green-400" />
+                                    ) : (
+                                        <Circle className="w-6 h-6 text-indigo-400" />
+                                    )}
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className={`font-bold mb-1 ${(firm?.website || firm?.logo_url) ? 'text-white' : 'text-indigo-200'}`}>Complete Firm Profile</h4>
+                                    <p className="text-sm text-slate-400 mb-4">Add your logo and office details to professionalize your portal.</p>
+
+                                    {!(firm?.website || firm?.logo_url) && (
+                                        <button
+                                            onClick={() => navigate('/internal/firm-profile')}
+                                            className="inline-flex items-center gap-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors shadow-lg shadow-indigo-500/20"
+                                        >
+                                            Edit Firm Profile <ChevronRight className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-4 p-4 rounded-xl opacity-50">
+                            {/* Step 3: Security Settings (Still placeholder for now) */}
+                            <div className="flex items-center gap-4 p-4 rounded-xl opacity-50 border border-transparent">
                                 <Circle className="w-6 h-6 text-slate-600" />
                                 <div>
                                     <h4 className="font-bold text-slate-300">Review Security Settings</h4>

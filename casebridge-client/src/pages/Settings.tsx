@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
     KeyRound, ShieldCheck, LifeBuoy, LogOut, ChevronRight,
-    Loader2, CheckCircle2, AlertTriangle, X
+    Loader2, CheckCircle2, AlertTriangle, X, Eye, EyeOff
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
@@ -39,6 +39,7 @@ export default function Settings() {
 
     // Password Logic
     const [passData, setPassData] = useState({ current: '', new: '', confirm: '' });
+    const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
     const [passError, setPassError] = useState('');
     const [passSuccess, setPassSuccess] = useState('');
     const [changingPass, setChangingPass] = useState(false);
@@ -207,36 +208,66 @@ export default function Settings() {
                             <form onSubmit={handleChangePassword} className="space-y-4">
                                 <div>
                                     <label>Current Password</label>
-                                    <input
-                                        type="password"
-                                        value={passData.current}
-                                        onChange={e => setPassData({ ...passData, current: e.target.value })}
-                                        placeholder="Enter current password"
-                                        required
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type={showPasswords.current ? "text" : "password"}
+                                            value={passData.current}
+                                            onChange={e => setPassData({ ...passData, current: e.target.value })}
+                                            placeholder="Enter current password"
+                                            required
+                                            className="w-full pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                        >
+                                            {showPasswords.current ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div>
                                     <label>New Password</label>
-                                    <input
-                                        type="password"
-                                        value={passData.new}
-                                        onChange={e => setPassData({ ...passData, new: e.target.value })}
-                                        placeholder="Min 10 chars, Upper, Number, Symbol"
-                                        required
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type={showPasswords.new ? "text" : "password"}
+                                            value={passData.new}
+                                            onChange={e => setPassData({ ...passData, new: e.target.value })}
+                                            placeholder="Min 10 chars, Upper, Number, Symbol"
+                                            required
+                                            className="w-full pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                        >
+                                            {showPasswords.new ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
                                     <p className="text-[10px] text-muted-foreground">Min 10 chars, Uppercase, Number, Special Symbol required.</p>
                                 </div>
 
                                 <div>
                                     <label>Confirm New Password</label>
-                                    <input
-                                        type="password"
-                                        value={passData.confirm}
-                                        onChange={e => setPassData({ ...passData, confirm: e.target.value })}
-                                        placeholder="Re-enter new password"
-                                        required
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type={showPasswords.confirm ? "text" : "password"}
+                                            value={passData.confirm}
+                                            onChange={e => setPassData({ ...passData, confirm: e.target.value })}
+                                            placeholder="Re-enter new password"
+                                            required
+                                            className="w-full pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                        >
+                                            {showPasswords.confirm ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="flex justify-end gap-3 pt-4">

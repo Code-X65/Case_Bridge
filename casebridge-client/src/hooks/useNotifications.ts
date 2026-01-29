@@ -29,11 +29,13 @@ export function useNotifications() {
                 .from('notifications')
                 .select('*')
                 .eq('user_id', user!.id)
-                .eq('channel', 'in_app')
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            return data as Notification[];
+            if (error) {
+                console.error("useNotifications Fetch Error:", error);
+                return [];
+            }
+            return (data || []) as Notification[];
         },
         refetchInterval: 30000
     });

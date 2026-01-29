@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useInternalSession } from '@/hooks/useInternalSession';
+import { useNavigate, Link } from 'react-router-dom';
 import {
     ShieldCheck,
     Building2,
@@ -12,13 +14,23 @@ import {
     ArrowRight,
     Loader2,
     AlertCircle,
-    CheckCircle2
+    CheckCircle2,
+    Eye,
+    EyeOff
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 type FormStep = 'personal' | 'firm' | 'success';
 
 export default function RegisterFirmPage() {
+    const { session } = useInternalSession();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (session) {
+            navigate('/internal/dashboard');
+        }
+    }, [session, navigate]);
+
     // Form state
     const [step, setStep] = useState<FormStep>('personal');
     const [loading, setLoading] = useState(false);
@@ -31,6 +43,8 @@ export default function RegisterFirmPage() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [personalPhone, setPersonalPhone] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Firm info
     const [firmName, setFirmName] = useState('');
@@ -101,6 +115,19 @@ export default function RegisterFirmPage() {
             // STEP 3: Store firm data in DATABASE (not localStorage!)
             console.log('💾 Saving pending registration to database...');
 
+            // IDEMPOTENCY CHECK: Check if registration already exists
+            const { data: existingPending } = await supabase
+                .from('pending_firm_registrations')
+                .select('id')
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (existingPending) {
+                console.log('⚠️ Found existing pending registration, treating as success.');
+                setStep('success');
+                return;
+            }
+
             // Add a small delay to ensure auth.users record is committed
             await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -129,20 +156,27 @@ export default function RegisterFirmPage() {
                 if (!result.error) {
                     insertedData = result.data;
                     pendingError = null;
-                    console.log('✅ Pending registration saved on attempt', attempt);
+                    console.log('✅ Pending registration saved on attempt', attempt, insertedData);
                     break;
                 }
 
                 pendingError = result.error;
                 console.warn(`⚠️ Attempt ${attempt} failed:`, pendingError.code, pendingError.message);
 
+                // If duplicate key error (23505), treat as success (race condition won checking constraints)
+                if (pendingError.code === '23505') {
+                    console.log('✅ Caught duplicate key error (23505), treating as success.');
+                    setStep('success');
+                    return;
+                }
+
                 // If it's a foreign key error, wait and retry
                 if (pendingError.code === '23503' && attempt < maxRetries) {
                     const delay = attempt * 1000; // Exponential backoff
                     console.log(`⏳ Waiting ${delay}ms before retry...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
-                } else if (pendingError.code !== '23503') {
-                    // For non-FK errors, don't retry
+                } else {
+                    // For non-recoverable errors, break
                     break;
                 }
             }
@@ -153,8 +187,6 @@ export default function RegisterFirmPage() {
                 // Provide more specific error message
                 if (pendingError.code === '42501') {
                     throw new Error('Permission denied. Please ensure you are logged in and try again.');
-                } else if (pendingError.code === '23505') {
-                    throw new Error('A registration is already pending for this account.');
                 } else if (pendingError.code === '23503') {
                     throw new Error('Database synchronization issue. Please contact support.');
                 } else {
@@ -303,14 +335,21 @@ export default function RegisterFirmPage() {
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                                     <input
-                                        type="password"
+                                        type={showPassword ? "text" : "password"}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         required
                                         minLength={8}
-                                        className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
+                                        className="w-full pl-11 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
                                         placeholder="••••••••"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    </button>
                                 </div>
                                 <p className="text-xs text-slate-500 mt-1.5">Minimum 8 characters</p>
                             </div>
@@ -322,13 +361,20 @@ export default function RegisterFirmPage() {
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                                     <input
-                                        type="password"
+                                        type={showConfirmPassword ? "text" : "password"}
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         required
-                                        className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
+                                        className="w-full pl-11 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
                                         placeholder="••••••••"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                                    >
+                                        {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    </button>
                                 </div>
                             </div>
 

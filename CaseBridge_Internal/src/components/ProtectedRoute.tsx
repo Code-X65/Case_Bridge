@@ -33,7 +33,8 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
                 .from('profiles')
                 .select('onboarding_state, status, first_login_flag')
                 .eq('id', authSession!.user.id)
-                .single();
+                .maybeSingle();
+
             if (error) throw error;
             return data;
         },

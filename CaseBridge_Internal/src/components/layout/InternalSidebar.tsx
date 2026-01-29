@@ -93,21 +93,25 @@ export default function InternalSidebar() {
                 {/* ADMIN SIDEBAR */}
                 {isAdmin && (
                     <>
-                        <SectionHeader label="Primary" />
+                        <SectionHeader label="Management" />
                         <NavItem label="Dashboard" path="/internal/dashboard" icon={LayoutDashboard} />
-                        <NavItem label="Intake" path="/intake" icon={FileText} />
-                        <NavItem label="Staff Management" path="/internal/staff-management" icon={Users} />
+                        <NavItem label="Staff & Roles" path="/internal/staff" icon={Users} />
+                        <NavItem label="Subscription Plans" path="/internal/subscription-plans" icon={CreditCard} />
                         <NavItem label="Firm Profile" path="/internal/firm-profile" icon={Building2} />
-                        <NavItem label="Cases" path="/internal/cases" icon={Briefcase} />
+
+                        <SectionHeader label="Case Operations" />
+                        <NavItem label="Case Intake" path="/internal/intake" icon={FileText} />
+                        <NavItem label="Case Management" path="/internal/matters" icon={Briefcase} />
                         <NavItem label="Clients" path="/internal/clients" icon={Contact2} />
-                        <NavItem label="Calendar" path="/internal/case-manager/calendar" icon={FileClock} />
-                        <NavItem label="Documents" path="/internal/documents" icon={FileText} />
+                        <NavItem label="Document Vault" path="/internal/documents" icon={FileClock} />
+
+                        <SectionHeader label="Performance" />
+                        <NavItem label="SLA & Reports" path="/internal/reports" icon={BarChart3} />
                         <NavItem label="Billing" path="/internal/billing" icon={CreditCard} />
-                        <NavItem label="Reports" path="/internal/reports" icon={BarChart3} />
 
                         <SectionHeader label="System" />
                         <NavItem label="Settings" path="/internal/settings" icon={Settings} />
-                        <NavItem label="Audit Logs" path="/internal/audit-logs" icon={FileClock} />
+                        <NavItem label="Audit Logs" path="/internal/audit-logs" icon={Shield} />
                         <NavItem label="Security & Access" path="/internal/security" icon={Shield} />
                         <NavItem label="Notifications" path="/internal/notifications" icon={Bell} badgeCount={unreadCount} />
                     </>
@@ -125,8 +129,11 @@ export default function InternalSidebar() {
                         <NavItem label="Documents" path="/internal/case-manager/documents" icon={FileText} />
                         <NavItem label="Tasks" path="/internal/case-manager/tasks" icon={CreditCard} />
 
+                        <SectionHeader label="Management" />
+                        <NavItem label="Staff & Roles" path="/internal/staff" icon={Users} />
+
                         <SectionHeader label="System" />
-                        <NavItem label="Notifications" path="/internal/case-manager/notifications" icon={Bell} badgeCount={unreadCount} />
+                        <NavItem label="Notifications" path="/internal/notifications" icon={Bell} badgeCount={unreadCount} />
                     </>
                 )}
 
@@ -141,7 +148,7 @@ export default function InternalSidebar() {
                         <NavItem label="Documents" path="/internal/associate/documents" icon={FileText} />
 
                         <SectionHeader label="System" />
-                        <NavItem label="Notifications" path="/internal/associate/notifications" icon={Bell} badgeCount={unreadCount} />
+                        <NavItem label="Notifications" path="/internal/notifications" icon={Bell} badgeCount={unreadCount} />
                     </>
                 )}
 
@@ -167,6 +174,6 @@ export default function InternalSidebar() {
                     </div>
                 </div>
             </div>
-        </aside>
+        </aside >
     );
 }

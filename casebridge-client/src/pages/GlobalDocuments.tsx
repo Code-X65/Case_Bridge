@@ -109,7 +109,14 @@ export default function GlobalDocuments() {
         }
     }, [loading]);
 
-    const handleDownload = async (fileUrl: string) => {
+    const handleDownload = async (fileUrl: string, docId: string, matterId: string) => {
+        // Track View/Download Event
+        await supabase.rpc('track_client_activity', {
+            p_action: 'document_viewed',
+            p_target_id: docId, // Target is the document
+            p_metadata: { file_url: fileUrl, matter_id: matterId }
+        });
+
         const { data } = await supabase.storage
             .from('case_documents')
             .createSignedUrl(fileUrl, 60);
@@ -191,7 +198,7 @@ export default function GlobalDocuments() {
                                         <div key={doc.id} className="glass-card p-6 hover:border-blue-500/50 transition-all group relative overflow-hidden flex flex-col justify-between">
                                             <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
-                                                    onClick={() => handleDownload(doc.file_url)}
+                                                    onClick={() => handleDownload(doc.file_url, doc.id, group.id)}
                                                     className="p-2.5 bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-500/30 hover:bg-blue-400 transition-colors"
                                                     title="Download Secure File"
                                                 >

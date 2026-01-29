@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useInternalSession } from '@/hooks/useInternalSession';
 import {
     ShieldCheck,
     ArrowRight,
@@ -7,10 +8,17 @@ import {
     Lock,
     Zap,
     Scale,
-    Gavel
+    Gavel,
+    LayoutDashboard
 } from 'lucide-react';
 
 export default function InternalLandingPage() {
+    const { session } = useInternalSession();
+
+    const formatRole = (role: string) => {
+        return role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    };
+
     return (
         <div className="min-h-screen bg-[#0F172A] text-white overflow-hidden relative font-sans">
             {/* Background Decorative Elements */}
@@ -27,12 +35,20 @@ export default function InternalLandingPage() {
                     <span className="text-2xl font-black italic tracking-tighter">CASEBRIDGE</span>
                 </div>
                 <div className="flex items-center gap-6">
-                    <Link to="/internal/login" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">
-                        Sign In
-                    </Link>
-                    <Link to="/internal/register-firm" className="px-5 py-2.5 bg-white text-slate-900 text-sm font-bold rounded-xl hover:bg-slate-200 transition-all active:scale-95">
-                        Get Started
-                    </Link>
+                    {session ? (
+                        <Link to="/internal/dashboard" className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-600/20">
+                            Go to Dashboard
+                        </Link>
+                    ) : (
+                        <>
+                            <Link to="/internal/login" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">
+                                Sign In
+                            </Link>
+                            <Link to="/internal/register-firm" className="px-5 py-2.5 bg-white text-slate-900 text-sm font-bold rounded-xl hover:bg-slate-200 transition-all active:scale-95">
+                                Get Started
+                            </Link>
+                        </>
+                    )}
                 </div>
             </nav>
 
@@ -56,20 +72,33 @@ export default function InternalLandingPage() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">
-                            <Link
-                                to="/internal/register-firm"
-                                className="px-8 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase text-sm tracking-widest rounded-2xl transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3 group active:scale-[0.98]"
-                            >
-                                Register Your Firm
-                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                            </Link>
-                            <Link
-                                to="/internal/login"
-                                className="px-8 py-5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black uppercase text-sm tracking-widest rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
-                            >
-                                <Lock className="w-5 h-5" />
-                                Staff Login
-                            </Link>
+                            {session ? (
+                                <Link
+                                    to="/internal/dashboard"
+                                    className="px-12 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase text-sm tracking-widest rounded-2xl transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3 group active:scale-[0.98]"
+                                >
+                                    <LayoutDashboard className="w-5 h-5" />
+                                    {formatRole(session.role)} Dashboard
+                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                </Link>
+                            ) : (
+                                <>
+                                    <Link
+                                        to="/internal/register-firm"
+                                        className="px-8 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase text-sm tracking-widest rounded-2xl transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3 group active:scale-[0.98]"
+                                    >
+                                        Register Your Firm
+                                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    </Link>
+                                    <Link
+                                        to="/internal/login"
+                                        className="px-8 py-5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black uppercase text-sm tracking-widest rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
+                                    >
+                                        <Lock className="w-5 h-5" />
+                                        Staff Login
+                                    </Link>
+                                </>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-8 pt-4">

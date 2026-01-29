@@ -10,6 +10,9 @@ import FirstLoginWelcome from './pages/auth/FirstLoginWelcome';
 import UnauthorizedPage from './pages/auth/UnauthorizedPage';
 import LockedAccountPage from './pages/auth/LockedAccountPage';
 import AcceptInvitePage from './pages/auth/AcceptInvitePage';
+import FirmProfilePage from './pages/internal/FirmProfilePage';
+import AuditLogsPage from './pages/internal/AuditLogsPage';
+import SubscriptionPlansPage from './pages/internal/SubscriptionPlansPage';
 import InternalLandingPage from './pages/internal/InternalLandingPage';
 import DashboardDispatcher from './pages/internal/DashboardDispatcher';
 import StaffManagementPage from './pages/internal/StaffManagementPage';
@@ -17,6 +20,7 @@ import MatterManagementPage from './pages/internal/MatterManagementPage';
 import ComingSoonPage from './pages/internal/ComingSoonPage';
 import IntakeDashboard from './pages/internal/intake/IntakeDashboard';
 import IntakeReview from './pages/internal/intake/IntakeReview';
+import ClientBehaviorPage from './pages/internal/case-manager/ClientBehaviorPage';
 
 import MyMattersPage from './pages/internal/MyMattersPage';
 import MatterWorkspace from './pages/internal/matters/MatterWorkspace';
@@ -65,46 +69,39 @@ function App() {
           <Route path="/internal/case-manager/dashboard" element={<ProtectedRoute><DashboardDispatcher /></ProtectedRoute>} />
           <Route path="/internal/associate/dashboard" element={<ProtectedRoute><DashboardDispatcher /></ProtectedRoute>} />
 
-          {/* Intake Routes */}
-          <Route path="/intake" element={<ProtectedRoute><IntakeDashboard /></ProtectedRoute>} />
+          {/* Unify Admin & Case Manager Routes (Admin has super-set) */}
+          <Route path="/internal/intake" element={<ProtectedRoute><IntakeDashboard /></ProtectedRoute>} />
+          <Route path="/intake" element={<ProtectedRoute><IntakeDashboard /></ProtectedRoute>} /> {/* Alias */}
           <Route path="/intake/:id" element={<ProtectedRoute><IntakeReview /></ProtectedRoute>} />
+          <Route path="/internal/intake/:id" element={<ProtectedRoute><IntakeReview /></ProtectedRoute>} />
 
-          <Route
-            path="/internal/staff-management"
-            element={
-              <ProtectedRoute>
-                <StaffManagementPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/internal/matters" element={<ProtectedRoute><MatterManagementPage /></ProtectedRoute>} />
+          <Route path="/internal/clients" element={<ProtectedRoute><ClientBehaviorPage /></ProtectedRoute>} />
+          <Route path="/internal/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
+          <Route path="/internal/calendar" element={<ProtectedRoute><InternalCalendar /></ProtectedRoute>} />
+          <Route path="/internal/reports" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
 
-          {/* Case Manager Routes */}
+          <Route path="/internal/staff" element={<ProtectedRoute><StaffManagementPage /></ProtectedRoute>} />
+          <Route path="/internal/staff-management" element={<ProtectedRoute><StaffManagementPage /></ProtectedRoute>} /> {/* Alias */}
+
+          {/* Legacy / Specialized Routes */}
           <Route path="/internal/case-manager/matters" element={<ProtectedRoute><MatterManagementPage /></ProtectedRoute>} />
-          <Route path="/internal/case-manager/clients" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/case-manager/clients" element={<ProtectedRoute><ClientBehaviorPage /></ProtectedRoute>} />
           <Route path="/internal/case-manager/calendar" element={<ProtectedRoute><InternalCalendar /></ProtectedRoute>} />
           <Route path="/internal/case-manager/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
-          <Route path="/internal/case-manager/tasks" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
-          <Route path="/internal/case-manager/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-
-
 
           {/* Associate Routes */}
           <Route path="/internal/associate/matters" element={<ProtectedRoute><MyMattersPage /></ProtectedRoute>} />
           <Route path="/internal/associate/schedule" element={<ProtectedRoute><InternalSchedulePage /></ProtectedRoute>} />
-          <Route path="/internal/associate/tasks" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
           <Route path="/internal/associate/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
-          <Route path="/internal/associate/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
 
-          {/* Coming Soon Placeholders (Admin & General) */}
-          <Route path="/internal/firm-profile" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
-          <Route path="/internal/cases" element={<ProtectedRoute><MatterManagementPage /></ProtectedRoute>} />
-          <Route path="/internal/clients" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
-          <Route path="/internal/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
+          {/* System Pages */}
+          <Route path="/internal/firm-profile" element={<ProtectedRoute><FirmProfilePage /></ProtectedRoute>} />
           <Route path="/internal/billing" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
-          <Route path="/internal/reports" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
           <Route path="/internal/settings" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
           <Route path="/internal/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
-          <Route path="/internal/audit-logs" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/audit-logs" element={<ProtectedRoute><AuditLogsPage /></ProtectedRoute>} />
+          <Route path="/internal/subscription-plans" element={<ProtectedRoute><SubscriptionPlansPage /></ProtectedRoute>} />
           <Route path="/internal/security" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
           <Route path="/internal/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
           <Route path="/internal/matter/:id" element={<ProtectedRoute><MatterWorkspace /></ProtectedRoute>} />

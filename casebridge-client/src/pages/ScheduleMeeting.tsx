@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+
 import {
     Calendar, ArrowLeft, Video, MapPin,
     CheckCircle2, Shield, Loader2, Send
@@ -14,7 +14,6 @@ type MeetingType = 'virtual' | 'physical';
 export default function ScheduleMeeting() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
 
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(true);

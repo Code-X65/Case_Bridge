@@ -9,7 +9,8 @@ import {
     Settings as SettingsIcon,
     ChevronRight,
     ShieldCheck,
-    FileText
+    FileText,
+    Bell
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
@@ -21,28 +22,49 @@ export default function Dashboard() {
     const containerRef = useRef<HTMLDivElement>(null);
 
     const [userName, setUserName] = useState('');
+    const [cases, setCases] = useState<any[]>([]);
+    const [activity, setActivity] = useState<any[]>([]);
 
     useEffect(() => {
-        const fetchProfile = async () => {
-            if (user) {
-                const { data } = await supabase
+        const fetchData = async () => {
+            if (!user) return;
+
+            try {
+                // 1. Fetch Profile
+                const { data: profile } = await supabase
                     .from('external_users')
                     .select('first_name')
                     .eq('id', user.id)
                     .single();
 
-                if (data?.first_name) {
-                    setUserName(data.first_name);
-                } else {
-                    setUserName(user?.user_metadata?.first_name || 'Client');
-                }
+                setUserName(profile?.first_name || user?.user_metadata?.first_name || 'Client');
+
+                // 2. Fetch Cases
+                const { data: casesData } = await supabase
+                    .from('case_reports')
+                    .select('id, title, status, created_at')
+                    .eq('client_id', user.id);
+
+                setCases(casesData || []);
+
+                // 3. Fetch Recent Activity (Notifications)
+                const { data: notifs } = await supabase
+                    .from('notifications')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+
+                setActivity(notifs || []);
+
+            } catch (err) {
+                console.error("Dashboard Fetch Error", err);
             }
         };
-        fetchProfile();
+        fetchData();
     }, [user]);
 
-    // In v1, we assume no cases exist yet per requirements.
-    const hasCases = false;
+    const hasCases = cases.length > 0;
 
     useGSAP(() => {
         const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
@@ -187,11 +209,42 @@ export default function Dashboard() {
                                 Recent Activity
                             </h2>
 
-                            <div className="glass-card flex flex-col items-center justify-center py-12 text-center border-dashed border-white/10 bg-transparent min-h-[200px]">
-                                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
-                                    <FileText size={20} className="text-muted-foreground/50" />
-                                </div>
-                                <p className="text-muted-foreground m-0 text-sm">No recent activity yet</p>
+                            <div className="space-y-3">
+                                {activity.length === 0 ? (
+                                    <div className="glass-card flex flex-col items-center justify-center py-12 text-center border-dashed border-white/10 bg-transparent min-h-[200px]">
+                                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                                            <FileText size={18} className="text-muted-foreground/50" />
+                                        </div>
+                                        <p className="text-muted-foreground m-0 text-xs">No recent activity yet</p>
+                                    </div>
+                                ) : (
+                                    activity.map((item) => (
+                                        <div key={item.id} className="glass-card p-4 hover:border-blue-500/30 transition-all group">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0">
+                                                    <Bell size={14} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-bold text-white mb-1 truncate">{item.payload.title}</p>
+                                                    <p className="text-[10px] text-slate-400 line-clamp-1 italic">"{item.payload.message}"</p>
+                                                    <div className="flex items-center gap-2 mt-2">
+                                                        <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-400/5 px-1.5 py-0.5 rounded tracking-tighter">
+                                                            {item.event_type.replace(/_/g, ' ')}
+                                                        </span>
+                                                        <span className="text-[8px] text-slate-600 font-bold tracking-tighter">
+                                                            {new Date(item.created_at).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                                {activity.length > 0 && (
+                                    <Link to="/notifications" className="block text-center text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-400 transition-colors pt-2">
+                                        View All Notifications
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     </div>

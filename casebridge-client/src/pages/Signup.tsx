@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Signup() {
     const navigate = useNavigate();
@@ -16,6 +17,8 @@ export default function Signup() {
         agreeTerms: false,
         agreeRelationship: false,
     });
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,10 +109,42 @@ export default function Signup() {
                     <input name="country" required value={formData.country} onChange={handleChange} placeholder="United States" />
 
                     <label>Password</label>
-                    <input type="password" name="password" required value={formData.password} onChange={handleChange} />
+                    <div className="relative">
+                        <input
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            required
+                            value={formData.password}
+                            onChange={handleChange}
+                            className="w-full pr-10"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                        >
+                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                    </div>
 
                     <label>Confirm Password</label>
-                    <input type="password" name="confirmPassword" required value={formData.confirmPassword} onChange={handleChange} />
+                    <div className="relative">
+                        <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            name="confirmPassword"
+                            required
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            className="w-full pr-10"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                        >
+                            {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                    </div>
 
                     <div className="mb-4">
                         <label style={{ display: 'flex', alignItems: 'flex-start', cursor: 'pointer' }}>

@@ -49,7 +49,7 @@ export default function RegisterFirmPage() {
     // Firm info
     const [firmName, setFirmName] = useState('');
     const [firmEmail, setFirmEmail] = useState('');
-    const [firmPhone, setFirmPhone] = useState('');
+    const [firmPhone, setFirmPhone] = useState('+234');
     const [firmAddress, setFirmAddress] = useState('');
 
     const handlePersonalNext = (e: React.FormEvent) => {
@@ -57,8 +57,8 @@ export default function RegisterFirmPage() {
         setError(null);
 
         // Validation
-        if (password.length < 8) {
-            setError('Password must be at least 8 characters');
+        if (password.length < 10) {
+            setError('Password must be at least 10 characters');
             return;
         }
 
@@ -323,7 +323,7 @@ export default function RegisterFirmPage() {
                                         value={personalPhone}
                                         onChange={(e) => setPersonalPhone(e.target.value)}
                                         className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
-                                        placeholder="+1 (555) 123-4567"
+                                        placeholder="+234 (800) 123-4567"
                                     />
                                 </div>
                             </div>
@@ -339,7 +339,7 @@ export default function RegisterFirmPage() {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         required
-                                        minLength={8}
+                                        minLength={10}
                                         className="w-full pl-11 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
                                         placeholder="••••••••"
                                     />
@@ -351,7 +351,7 @@ export default function RegisterFirmPage() {
                                         {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                     </button>
                                 </div>
-                                <p className="text-xs text-slate-500 mt-1.5">Minimum 8 characters</p>
+                                <p className="text-xs text-slate-500 mt-1.5">Minimum 10 characters with uppercase and number</p>
                             </div>
 
                             <div>

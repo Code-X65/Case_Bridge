@@ -47,9 +47,27 @@ export default function Login() {
             }
 
         } catch (err: any) {
+            console.error('Login error:', err);
+
+            // Handle Email Not Confirmed specifically
+            if (err.message?.includes('Email not confirmed') || err.status === 400 && err.message?.includes('confirm')) {
+                setError('Your email is not verified. A new verification link has been sent to your inbox.');
+                try {
+                    await supabase.auth.resend({
+                        type: 'signup',
+                        email: email,
+                        options: {
+                            emailRedirectTo: `${window.location.origin}/verify-email`
+                        }
+                    });
+                } catch (resendErr) {
+                    console.error('Failed to resend verification:', resendErr);
+                }
+                setLoading(false);
+                return;
+            }
+
             setError(err.message || 'Failed to login');
-            // If login failed, it might be because of email not confirmed if Supabase enforces it.
-            // But typically we can still sign in, just session might be limited or we check status manually.
         } finally {
             setLoading(false);
         }

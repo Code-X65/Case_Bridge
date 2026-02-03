@@ -130,8 +130,8 @@ export default function AdminDashboard() {
 
                             {/* Step 2: Complete Firm Profile */}
                             <div className={`flex items-start gap-4 p-4 rounded-xl border transition-all ${firm?.website || firm?.logo_url
-                                    ? 'bg-green-500/10 border-green-500/20'
-                                    : 'bg-[#0F172A] border-white/5'
+                                ? 'bg-green-500/10 border-green-500/20'
+                                : 'bg-[#0F172A] border-white/5'
                                 }`}>
                                 <div className="mt-1">
                                     {(firm?.website || firm?.logo_url) ? (

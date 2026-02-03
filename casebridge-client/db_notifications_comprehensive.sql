@@ -15,7 +15,7 @@ DECLARE
     v_firm_id UUID;
 BEGIN
     -- ==========================================
-    -- A. CLIENT EVENTS (Target = Client)
+    -- A. CLIENT EVENTS (Target = Client)   
     -- ==========================================
 
     -- 1. Case Report Submitted (Handled in V1, reaffirming)

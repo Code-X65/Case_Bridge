@@ -73,7 +73,72 @@ export default function RegisterFirmPage() {
             return;
         }
 
-        setStep('firm');
+        checkExistingUser();
+    };
+
+    const checkExistingUser = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // 1. Check if profile exists (already a registered user)
+            const { data: existingProfile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('email', email)
+                .maybeSingle();
+
+            if (existingProfile) {
+                setError('An account with this email already exists. Please log in to your existing account.');
+                setLoading(false);
+                return;
+            }
+
+            // 2. Check if they have a pending invitation
+            const { data: pendingInvite } = await supabase
+                .from('invitations')
+                .select('firm_id, firms(name)')
+                .eq('email', email)
+                .eq('status', 'pending')
+                .maybeSingle();
+
+            if (pendingInvite) {
+                setError(`You have a pending invitation to join ${pendingInvite.firms?.name}. Please check your email or log in to accept the invitation.`);
+                setLoading(false);
+                return;
+            }
+
+            // 3. Check if they have an unconfirmed registration (either as user or firm email)
+            const { data: pendingReg } = await supabase
+                .from('pending_firm_registrations')
+                .select('id')
+                .or(`firm_email.eq.${email},user_id.in.(select id from auth.users where email = '${email}')`)
+                .maybeSingle();
+
+            if (pendingReg) {
+                setError('A registration involving this email is already underway. Please check your inbox for the verification link.');
+                setLoading(false);
+                return;
+            }
+
+            // 4. Check if the email is already used as a primary Firm Email
+            const { data: existingFirm } = await supabase
+                .from('firms')
+                .select('id, name')
+                .eq('email', email)
+                .maybeSingle();
+
+            if (existingFirm) {
+                setError(`This email is already registered as the primary contact for ${existingFirm.name}.`);
+                setLoading(false);
+                return;
+            }
+
+            setStep('firm');
+        } catch (err) {
+            console.error('Check user error:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleFirmSubmit = async (e: React.FormEvent) => {
@@ -83,6 +148,30 @@ export default function RegisterFirmPage() {
 
         try {
             console.log('🚀 Starting firm registration...');
+
+            // IDEMPOTENCY/UNIQUENESS CHECK for Firm Email (if different from personal)
+            const checkEmail = firmEmail || email;
+            if (checkEmail !== email) {
+                const { data: conflict } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('email', checkEmail)
+                    .maybeSingle();
+
+                if (conflict) {
+                    throw new Error(`The firm email (${checkEmail}) is already being used by an existing user account.`);
+                }
+
+                const { data: firmConflict } = await supabase
+                    .from('firms')
+                    .select('name')
+                    .eq('email', checkEmail)
+                    .maybeSingle();
+
+                if (firmConflict) {
+                    throw new Error(`The firm email (${checkEmail}) is already registered to ${firmConflict.name}.`);
+                }
+            }
 
             // CRITICAL: Clear any existing session first
             await supabase.auth.signOut();
@@ -380,10 +469,20 @@ export default function RegisterFirmPage() {
 
                             <button
                                 type="submit"
-                                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase text-sm tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 mt-6"
+                                disabled={loading}
+                                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase text-sm tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50"
                             >
-                                <span>Continue to Firm Details</span>
-                                <ArrowRight className="w-5 h-5" />
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Checking Identity...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>Continue to Firm Details</span>
+                                        <ArrowRight className="w-5 h-5" />
+                                    </>
+                                )}
                             </button>
                         </form>
                     )}
@@ -503,7 +602,7 @@ export default function RegisterFirmPage() {
                                 <div className="flex items-start gap-3 mb-4">
                                     <CheckCircle2 className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
                                     <p className="text-sm text-indigo-300 text-left">
-                                        Click the <strong>activation link</strong> in your email to verify your account and activate your firm.
+                                        Click the <strong>activation link</strong> in your email to verify your account and initialize your workspace.
                                     </p>
                                 </div>
                                 <div className="bg-white/5 rounded-lg p-4 text-left">

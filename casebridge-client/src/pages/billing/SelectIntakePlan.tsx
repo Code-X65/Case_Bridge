@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { Shield, Clock, CheckCircle2, ArrowRight } from 'lucide-react';
-import ClientLayout from '../../components/ClientLayout';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useState } from 'react';
@@ -75,7 +74,7 @@ export default function SelectIntakePlan() {
     };
 
     return (
-        <ClientLayout>
+        <>
             <div className="max-w-5xl mx-auto py-12">
                 <header className="text-center mb-16">
                     <h1 className="text-4xl md:text-5xl font-black mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
@@ -144,6 +143,6 @@ export default function SelectIntakePlan() {
                     Note: This fee covers the administrative cost of the initial case review and intake processing. It does not guarantee case acceptance or constitute legal representation fees.
                 </p>
             </div>
-        </ClientLayout>
+        </>
     );
 }

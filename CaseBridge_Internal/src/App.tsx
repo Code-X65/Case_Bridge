@@ -21,6 +21,8 @@ import ComingSoonPage from './pages/internal/ComingSoonPage';
 import IntakeDashboard from './pages/internal/intake/IntakeDashboard';
 import IntakeReview from './pages/internal/intake/IntakeReview';
 import ClientBehaviorPage from './pages/internal/case-manager/ClientBehaviorPage';
+import ReportingDashboard from './pages/internal/ReportingDashboard';
+import FirmBillingPage from './pages/internal/FirmBillingPage';
 
 import MyMattersPage from './pages/internal/MyMattersPage';
 import MatterWorkspace from './pages/internal/matters/MatterWorkspace';
@@ -79,7 +81,7 @@ function App() {
           <Route path="/internal/clients" element={<ProtectedRoute><ClientBehaviorPage /></ProtectedRoute>} />
           <Route path="/internal/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
           <Route path="/internal/calendar" element={<ProtectedRoute><InternalCalendar /></ProtectedRoute>} />
-          <Route path="/internal/reports" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/reports" element={<ProtectedRoute><ReportingDashboard /></ProtectedRoute>} />
 
           <Route path="/internal/staff" element={<ProtectedRoute><StaffManagementPage /></ProtectedRoute>} />
           <Route path="/internal/staff-management" element={<ProtectedRoute><StaffManagementPage /></ProtectedRoute>} /> {/* Alias */}
@@ -97,7 +99,7 @@ function App() {
 
           {/* System Pages */}
           <Route path="/internal/firm-profile" element={<ProtectedRoute><FirmProfilePage /></ProtectedRoute>} />
-          <Route path="/internal/billing" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/billing" element={<ProtectedRoute><FirmBillingPage /></ProtectedRoute>} />
           <Route path="/internal/settings" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
           <Route path="/internal/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
           <Route path="/internal/audit-logs" element={<ProtectedRoute><AuditLogsPage /></ProtectedRoute>} />

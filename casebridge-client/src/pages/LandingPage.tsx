@@ -12,7 +12,10 @@ import {
     CreditCard,
     BarChart3,
     MessageSquare,
-    Zap
+    Zap,
+    Shield as ShieldIcon,
+    Lock as LockIcon,
+    ChevronRight
 } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -55,89 +58,21 @@ const LandingPage = () => {
     useGSAP(() => {
         if (!containerRef.current) return;
 
-        // Hero Animations
+        // Hero Animations - Pure Fade-In Only
         const tl = gsap.timeline();
         tl.from('.gsap-hero-text > *', {
-            y: 50,
             opacity: 0,
             duration: 1,
             stagger: 0.1,
             ease: "power3.out"
         })
             .from('.gsap-hero-visual', {
-                x: 50,
                 opacity: 0,
                 duration: 1.2,
                 ease: "power3.out"
             }, "-=0.8");
 
-        // Stats Animation
-        gsap.from('.gsap-stats > div', {
-            scrollTrigger: {
-                trigger: '.gsap-stats',
-                start: "top 80%",
-            },
-            y: 50,
-            opacity: 0,
-            duration: 0.8,
-            stagger: 0.2,
-            ease: "power2.out"
-        });
-
-        // Feature Sections Slide-In
-        const sections = gsap.utils.toArray('.gsap-feature-section');
-        sections.forEach((section: any, i) => {
-            const isLeft = i % 2 === 0;
-            gsap.from(section.querySelectorAll('.gsap-feature-content, .gsap-feature-visual'), {
-                scrollTrigger: {
-                    trigger: section,
-                    start: "top 75%",
-                },
-                x: isLeft ? -50 : 50, // Stagger slightly based on direction
-                opacity: 0,
-                duration: 1,
-                stagger: 0.2,
-                ease: "power3.out",
-                clearProps: "all" // Clean up for potential re-triggers/resizes
-            });
-        });
-
-        // Main Feature (Blue Section)
-        gsap.from('.gsap-main-feature', {
-            scrollTrigger: {
-                trigger: '.gsap-main-feature',
-                start: "top 70%",
-            },
-            y: 60,
-            opacity: 0,
-            duration: 1,
-            ease: "power3.out"
-        });
-
-        // Social Proof
-        gsap.from('.gsap-brands', {
-            scrollTrigger: {
-                trigger: '.gsap-brands',
-                start: "top 90%",
-            },
-            y: 20,
-            opacity: 0,
-            duration: 1,
-            ease: "power2.out"
-        });
-
-        // Footer CTA
-        gsap.from('.gsap-footer-cta', {
-            scrollTrigger: {
-                trigger: '.gsap-footer-cta',
-                start: "top 80%",
-            },
-            scale: 0.95,
-            opacity: 0,
-            duration: 0.8,
-            ease: "back.out(1.7)"
-        });
-
+        // Note: On-scroll fade-in animations removed per request.
     }, { scope: containerRef });
 
     return (
@@ -298,6 +233,63 @@ const LandingPage = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* DUAL PATHWAY SECTION */}
+            <section className="py-20 -mt-10 relative z-30 px-4">
+                <div className="max-w-7xl mx-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                        {/* PATH 1: REPORTERS */}
+                        <div className="relative group overflow-hidden rounded-[2.5rem] border border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent p-12 transition-all hover:border-blue-500/30 hover:shadow-[0_0_50px_rgba(59,130,246,0.1)]">
+                            <div className="relative z-10">
+                                <div className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center text-blue-400 mb-8 border border-blue-600/30 group-hover:scale-110 transition-transform">
+                                    <ShieldIcon size={32} />
+                                </div>
+                                <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-4 leading-none">
+                                    Incident <br /> <span className="text-blue-500">Intake Portal</span>
+                                </h3>
+                                <p className="text-slate-500 font-medium mb-10 max-w-sm">
+                                    For individuals and organizations looking to report a new legal matter, submit evidence, or request emergency legal representation.
+                                </p>
+                                <button
+                                    onClick={() => navigate('/signup')}
+                                    className="flex items-center gap-3 text-xs font-black uppercase tracking-[0.3em] text-white bg-blue-600 px-8 py-5 rounded-2xl shadow-xl shadow-blue-600/20 hover:bg-blue-500 transition-all scale-100 active:scale-95"
+                                >
+                                    Report New Case <ArrowRight size={16} />
+                                </button>
+                            </div>
+                            <div className="absolute top-10 right-10 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
+                                <ShieldIcon size={200} />
+                            </div>
+                        </div>
+
+                        {/* PATH 2: CLIENTS */}
+                        <div className="relative group overflow-hidden rounded-[2.5rem] border border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent p-12 transition-all hover:border-indigo-500/30 hover:shadow-[0_0_50px_rgba(99,102,241,0.1)]">
+                            <div className="relative z-10">
+                                <div className="w-16 h-16 bg-indigo-600/20 rounded-2xl flex items-center justify-center text-indigo-400 mb-8 border border-indigo-600/30 group-hover:scale-110 transition-transform">
+                                    <LockIcon size={32} />
+                                </div>
+                                <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-4 leading-none">
+                                    Secure <br /> <span className="text-indigo-500">Client Login</span>
+                                </h3>
+                                <p className="text-slate-500 font-medium mb-10 max-w-sm">
+                                    Already have an active case? Access your secure vault, message your assigned legal team, and track your case progression in real-time.
+                                </p>
+                                <button
+                                    onClick={() => navigate('/login')}
+                                    className="flex items-center gap-3 text-xs font-black uppercase tracking-[0.3em] text-white border border-white/10 bg-white/5 px-8 py-5 rounded-2xl hover:bg-white/10 transition-all scale-100 active:scale-95"
+                                >
+                                    Access Workspace <ChevronRight size={16} />
+                                </button>
+                            </div>
+                            <div className="absolute top-10 right-10 opacity-[0.03] group-hover:opacity-[0.02] transition-opacity">
+                                <LockIcon size={200} />
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </section>

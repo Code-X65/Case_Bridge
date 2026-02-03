@@ -96,20 +96,88 @@
 
   /* Custom Animations */
   @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-20px); }
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-20px);
+    }
   }
 
   .animate-float {
     animation: float 6s ease-in-out infinite;
   }
 
+  /* Slide Animations for Sidebar */
+  @keyframes slideInLeft {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-in-left {
+    animation: slideInLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out forwards;
+  }
+
   /* 3D Transforms */
   .perspective-1000 {
     perspective: 1000px;
   }
-  
+
   .transform-style-3d {
     transform-style: preserve-3d;
+  }
+
+  /* Mobile Responsive Utilities */
+  .mobile-menu-button {
+    @apply fixed top-4 left-4 z-50 p-3 rounded-lg bg-card/80 backdrop-blur-md border border-white/10 text-foreground hover:bg-card transition-all lg:hidden;
+  }
+
+  .mobile-overlay {
+    @apply fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden;
+  }
+
+  /* Responsive Grid Adjustments */
+  @media (max-width: 768px) {
+    .page-container {
+      @apply p-4;
+    }
+
+    .glass-card {
+      @apply p-6;
+    }
+
+    .auth-card {
+      @apply max-w-full;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .glass-card {
+      @apply p-4;
+    }
   }
 }

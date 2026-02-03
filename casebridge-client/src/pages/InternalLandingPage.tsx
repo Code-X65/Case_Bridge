@@ -53,89 +53,21 @@ const InternalLandingPage = () => {
     useGSAP(() => {
         if (!containerRef.current) return;
 
-        // Hero Animations
+        // Hero Animations - Pure Fade-In Only
         const tl = gsap.timeline();
         tl.from('.gsap-hero-text > *', {
-            y: 50,
             opacity: 0,
             duration: 1,
             stagger: 0.1,
             ease: "power3.out"
         })
             .from('.gsap-hero-visual', {
-                x: 50,
                 opacity: 0,
                 duration: 1.2,
                 ease: "power3.out"
             }, "-=0.8");
 
-        // Stats Animation
-        gsap.from('.gsap-stats > div', {
-            scrollTrigger: {
-                trigger: '.gsap-stats',
-                start: "top 80%",
-            },
-            y: 50,
-            opacity: 0,
-            duration: 0.8,
-            stagger: 0.2,
-            ease: "power2.out"
-        });
-
-        // Feature Sections Slide-In
-        const sections = gsap.utils.toArray('.gsap-feature-section');
-        sections.forEach((section: any, i) => {
-            const isLeft = i % 2 === 0;
-            gsap.from(section.querySelectorAll('.gsap-feature-content, .gsap-feature-visual'), {
-                scrollTrigger: {
-                    trigger: section,
-                    start: "top 75%",
-                },
-                x: isLeft ? -50 : 50,
-                opacity: 0,
-                duration: 1,
-                stagger: 0.2,
-                ease: "power3.out",
-                clearProps: "all"
-            });
-        });
-
-        // Main Feature (Blue Section)
-        gsap.from('.gsap-main-feature', {
-            scrollTrigger: {
-                trigger: '.gsap-main-feature',
-                start: "top 70%",
-            },
-            y: 60,
-            opacity: 0,
-            duration: 1,
-            ease: "power3.out"
-        });
-
-        // Social Proof
-        gsap.from('.gsap-brands', {
-            scrollTrigger: {
-                trigger: '.gsap-brands',
-                start: "top 90%",
-            },
-            y: 20,
-            opacity: 0,
-            duration: 1,
-            ease: "power2.out"
-        });
-
-        // Footer CTA
-        gsap.from('.gsap-footer-cta', {
-            scrollTrigger: {
-                trigger: '.gsap-footer-cta',
-                start: "top 80%",
-            },
-            scale: 0.95,
-            opacity: 0,
-            duration: 0.8,
-            ease: "back.out(1.7)"
-        });
-
+        // Note: On-scroll fade-in animations removed per request.
     }, { scope: containerRef });
 
     return (

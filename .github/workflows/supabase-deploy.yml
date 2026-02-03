@@ -1,0 +1,30 @@
+name: Deploy Supabase
+
+on:
+    push:
+        branches:
+            - main
+        paths:
+            - "CaseBridge_Internal/supabase/**"
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+
+            - uses: supabase/setup-cli@v1
+              with:
+                  version: latest
+
+            - name: Link Project
+              run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }} -p ${{ secrets.SUPABASE_DB_PASSWORD }}
+              working-directory: CaseBridge_Internal
+
+            - name: Deploy Migrations
+              run: supabase db push
+              working-directory: CaseBridge_Internal
+
+            - name: Deploy Edge Functions
+              run: supabase functions deploy --all
+              working-directory: CaseBridge_Internal

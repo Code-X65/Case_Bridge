@@ -58,7 +58,7 @@ export default function InternalLoginPage() {
                 await supabase.auth.signOut();
 
                 if (pendingReg) {
-                    throw new Error('Your firm registration is pending approval.');
+                    throw new Error('Your email verification is incomplete. Please check your inbox for the activation link.');
                 }
 
                 throw new Error('User profile not found. Please contact support.');
@@ -110,6 +110,22 @@ export default function InternalLoginPage() {
 
         } catch (err: any) {
             console.error('Login error:', err);
+
+            // Handle Email Not Confirmed specifically
+            if (err.message?.includes('Email not confirmed') || err.status === 400 && err.message?.includes('confirm')) {
+                setError('Your email is not verified. A new verification link has been sent to your inbox.');
+                try {
+                    await supabase.auth.resend({
+                        type: 'signup',
+                        email: email,
+                    });
+                } catch (resendErr) {
+                    console.error('Failed to resend verification:', resendErr);
+                }
+                setLoading(false);
+                return;
+            }
+
             setError(err.message || 'Login failed. Please check your credentials.');
         } finally {
             setLoading(false);

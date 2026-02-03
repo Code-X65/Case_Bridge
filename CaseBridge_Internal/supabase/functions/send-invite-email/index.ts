@@ -15,10 +15,13 @@ serve(async (req) => {
         const { email, role, firm_name, invite_link, first_name, last_name } = await req.json()
 
         const resendApiKey = Deno.env.get('RESEND_API_KEY')
+        const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY')
+        const resendFrom = Deno.env.get('RESEND_FROM_EMAIL') || 'invitations@casebridge.com'
+        const sendgridFrom = Deno.env.get('SENDGRID_FROM_EMAIL') || 'invitations@casebridge.com'
 
-        // If no API key, log simulation and return success (dev mode)
-        if (!resendApiKey) {
-            console.log(`📧 EMAIL SIMULATION (No RESEND_API_KEY):
+        // If no API key for either provider, log simulation and return success (dev mode)
+        if (!resendApiKey && !sendgridApiKey) {
+            console.log(`📧 EMAIL SIMULATION (No API Keys Found):
     To: ${email}
     Subject: You've been invited to join ${firm_name} on CaseBridge
     Body: ${first_name} ${last_name}, you've been invited as a ${role}. 
@@ -30,7 +33,7 @@ serve(async (req) => {
             })
         }
 
-        // Send actual email via Resend
+        // ... [HTML Template remains identical, skipped for brevity in Instruction but kept in final content] ...
         const emailHtml = `
 <!DOCTYPE html>
 <html>
@@ -110,29 +113,51 @@ serve(async (req) => {
 </html>
         `
 
-        const res = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${resendApiKey}`,
-            },
-            body: JSON.stringify({
-                from: 'CaseBridge <invitations@casebridge.com>',
-                to: [email],
-                subject: `You've been invited to join ${firm_name} on CaseBridge`,
-                html: emailHtml,
-            }),
-        })
+        let responseData;
+        let provider = '';
 
-        const data = await res.json()
-
-        if (!res.ok) {
-            throw new Error(`Resend API error: ${JSON.stringify(data)}`)
+        if (resendApiKey) {
+            provider = 'Resend';
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${resendApiKey}`,
+                },
+                body: JSON.stringify({
+                    from: `CaseBridge <${resendFrom}>`,
+                    to: [email],
+                    subject: `You've been invited to join ${firm_name} on CaseBridge`,
+                    html: emailHtml,
+                }),
+            })
+            responseData = await res.json();
+            if (!res.ok) throw new Error(`Resend Error: ${JSON.stringify(responseData)}`);
+        } else if (sendgridApiKey) {
+            provider = 'SendGrid';
+            const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sendgridApiKey}`,
+                },
+                body: JSON.stringify({
+                    personalizations: [{ to: [{ email }] }],
+                    from: { email: sendgridFrom, name: 'CaseBridge' },
+                    subject: `You've been invited to join ${firm_name} on CaseBridge`,
+                    content: [{ type: 'text/html', value: emailHtml }],
+                }),
+            })
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(`SendGrid Error: ${JSON.stringify(errData)}`);
+            }
+            responseData = { success: true };
         }
 
-        console.log(`✅ Email sent successfully to ${email} via Resend (ID: ${data.id})`)
+        console.log(`✅ Email sent successfully to ${email} via ${provider}`)
 
-        return new Response(JSON.stringify({ success: true, mode: 'live', email_id: data.id }), {
+        return new Response(JSON.stringify({ success: true, mode: 'live', provider, data: responseData }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
         })

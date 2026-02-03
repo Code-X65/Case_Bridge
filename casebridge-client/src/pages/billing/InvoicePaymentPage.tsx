@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import ClientLayout from '../../components/ClientLayout';
 import { Lock, CreditCard, AlertTriangle, Loader2, ArrowRight } from 'lucide-react';
 import { usePaystackPayment } from 'react-paystack';
 import { useAuth } from '../../contexts/AuthContext';
@@ -108,15 +107,15 @@ export default function InvoicePaymentPage() {
     };
 
     if (loading) return (
-        <ClientLayout>
+        <>
             <div className="flex justify-center items-center py-40">
                 <Loader2 className="animate-spin text-blue-500 w-10 h-10" />
             </div>
-        </ClientLayout>
+        </>
     );
 
     return (
-        <ClientLayout>
+        <>
             <div className="max-w-md mx-auto py-20 relative">
 
                 {/* Security Badge */}
@@ -179,6 +178,6 @@ export default function InvoicePaymentPage() {
                     <span className="text-xl font-black text-white">Mastercard</span>
                 </div>
             </div>
-        </ClientLayout>
+        </>
     );
 }

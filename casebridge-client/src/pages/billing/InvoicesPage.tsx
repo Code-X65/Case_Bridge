@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import ClientLayout from '../../components/ClientLayout';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Loader2, CreditCard, ArrowRight } from 'lucide-react';
@@ -37,7 +36,7 @@ export default function InvoicesPage() {
     };
 
     return (
-        <ClientLayout>
+        <>
             <div className="max-w-5xl mx-auto py-12">
                 <header className="flex justify-between items-end mb-10">
                     <div>
@@ -118,6 +117,6 @@ export default function InvoicesPage() {
                     )}
                 </div>
             </div>
-        </ClientLayout>
+        </>
     );
 }

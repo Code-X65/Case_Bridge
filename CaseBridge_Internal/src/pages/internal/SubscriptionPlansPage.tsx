@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
-import InternalSidebar from '@/components/layout/InternalSidebar';
 import {
     Loader2, Plus, Trash2, Check,
     Zap, Gem, Target, Save,
     Edit3, Shield
 } from 'lucide-react';
+import InternalLayout from '@/components/layout/InternalLayout';
 
 interface PlanFeature {
     text: string;
@@ -127,10 +127,8 @@ export default function SubscriptionPlansPage() {
     if (isLoading) return <div className="min-h-screen bg-[#0F172A] flex items-center justify-center"><Loader2 className="animate-spin text-indigo-500" /></div>;
 
     return (
-        <div className="min-h-screen bg-[#0F172A] text-white font-sans">
-            <InternalSidebar />
-
-            <main className="ml-64 p-12 max-w-7xl">
+        <InternalLayout>
+            <div className="max-w-7xl mx-auto">
                 <header className="mb-12">
                     <h1 className="text-4xl font-black mb-2 tracking-tight">Plan Governance</h1>
                     <p className="text-slate-400 text-lg">Manage features and pricing for the three standard service tiers.</p>
@@ -291,7 +289,7 @@ export default function SubscriptionPlansPage() {
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </InternalLayout>
     );
 }

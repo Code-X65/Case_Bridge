@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react';
-import ClientLayout from '../components/ClientLayout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -13,19 +12,19 @@ import { useGSAP } from '@gsap/react';
 const SettingItem = ({ icon: Icon, title, description, badge = '', onClick, destructive = false }: any) => (
     <button
         onClick={onClick}
-        className="w-full text-left glass-card flex items-start gap-4 hover:border-white/20 transition-all group mb-4"
+        className="w-full text-left glass-card flex items-start gap-3 sm:gap-4 hover:border-white/20 transition-all group mb-3 sm:mb-4 p-4 sm:p-5"
     >
-        <div className={`p-3 rounded-xl ${destructive ? 'bg-red-500/10 text-red-400' : 'bg-white/5 text-muted-foreground'} group-hover:scale-110 transition-transform`}>
-            <Icon size={24} />
+        <div className={`p-2.5 sm:p-3 rounded-xl ${destructive ? 'bg-red-500/10 text-red-400' : 'bg-white/5 text-muted-foreground'} group-hover:scale-110 transition-transform shrink-0`}>
+            <Icon size={20} className="sm:w-6 sm:h-6" />
         </div>
-        <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-                <h3 className={`font-semibold ${destructive ? 'text-red-400' : 'text-foreground'}`}>{title}</h3>
-                {badge && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded uppercase tracking-wider font-bold">{badge}</span>}
+        <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+                <h3 className={`font-semibold text-sm sm:text-base ${destructive ? 'text-red-400' : 'text-foreground'}`}>{title}</h3>
+                {badge && <span className="text-[8px] sm:text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded uppercase tracking-wider font-bold whitespace-nowrap">{badge}</span>}
             </div>
-            <p className="text-sm text-muted-foreground m-0 leading-relaxed">{description}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground m-0 leading-relaxed line-clamp-2 sm:line-clamp-none">{description}</p>
         </div>
-        <ChevronRight size={20} className="text-muted-foreground/30 mt-4 group-hover:translate-x-1 transition-transform" />
+        <ChevronRight size={18} className="text-muted-foreground/30 mt-1 sm:mt-4 group-hover:translate-x-1 transition-transform shrink-0" />
     </button>
 );
 
@@ -47,8 +46,8 @@ export default function Settings() {
     useGSAP(() => {
         if (showPasswordModal) {
             gsap.fromTo(modalRef.current,
-                { y: 50, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.3, ease: 'power2.out' }
+                { opacity: 0 },
+                { opacity: 1, duration: 0.3, ease: 'power2.out' }
             );
         }
     }, [showPasswordModal]);
@@ -56,8 +55,8 @@ export default function Settings() {
     useGSAP(() => {
         if (showHelpModal) {
             gsap.fromTo(helpModalRef.current,
-                { scale: 0.9, opacity: 0 },
-                { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(1.7)' }
+                { opacity: 0 },
+                { opacity: 1, duration: 0.3, ease: 'power2.out' }
             );
         }
     }, [showHelpModal]);
@@ -130,16 +129,16 @@ export default function Settings() {
     };
 
     return (
-        <ClientLayout>
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold">Account Settings</h1>
-                <p className="text-muted-foreground mt-1">Manage your security and account preferences.</p>
+        <>
+            <div className="mb-8 px-2 sm:px-0">
+                <h1 className="text-2xl sm:text-3xl font-bold">Account Settings</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">Manage your security and account preferences.</p>
             </div>
 
             <div className="max-w-3xl relative">
-                <div className={`${showPasswordModal ? 'blur-sm pointer-events-none' : ''} transition-all duration-300`}>
+                <div className={`${showPasswordModal || showHelpModal ? 'blur-sm pointer-events-none' : ''} transition-all duration-300`}>
                     <div className="mb-8">
-                        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-2">
+                        <h2 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 px-2">
                             Security & Authentication
                         </h2>
                         <SettingItem
@@ -157,7 +156,7 @@ export default function Settings() {
                     </div>
 
                     <div className="mb-8">
-                        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-2">
+                        <h2 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 px-2">
                             Support & Privacy
                         </h2>
                         <SettingItem
@@ -168,8 +167,8 @@ export default function Settings() {
                         />
                     </div>
 
-                    <div className="mt-12 pt-8 border-t border-white/5">
-                        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-2 text-red-400/50">
+                    <div className="mt-8 sm:mt-12 pt-8 sm:pt-8 border-t border-white/5">
+                        <h2 className="text-[10px] font-black text-red-400/50 uppercase tracking-[0.2em] mb-4 px-2">
                             Account Actions
                         </h2>
                         <SettingItem
@@ -184,168 +183,171 @@ export default function Settings() {
 
                 {/* Password Modal Overlay */}
                 {showPasswordModal && (
-                    <div className="absolute top-0 left-0 w-full h-full min-h-[500px] flex items-start justify-center pt-10 z-20">
-                        <div ref={modalRef} className="glass-card w-full max-w-lg border border-white/20 shadow-2xl bg-[#0a0f1e]/90">
-                            <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-                                <h3 className="text-xl font-bold">Change Password</h3>
-                                <button onClick={() => setShowPasswordModal(false)} className="text-muted-foreground hover:text-white">
-                                    <X size={20} />
+                    <div className="fixed inset-0 flex items-center justify-center z-[110] px-4 py-8">
+                        <div className="absolute inset-0 bg-[#0a0f1e]/80 backdrop-blur-md" onClick={() => setShowPasswordModal(false)}></div>
+                        <div ref={modalRef} className="glass-card w-full max-w-lg border border-white/20 shadow-2xl bg-[#0a0f1e]/90 relative z-10 overflow-hidden">
+                            <div className="flex justify-between items-center p-5 sm:p-6 border-b border-white/10">
+                                <h3 className="text-lg sm:text-xl font-bold">Change Password</h3>
+                                <button onClick={() => setShowPasswordModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/5 text-muted-foreground hover:text-white transition-colors">
+                                    <X size={18} />
                                 </button>
                             </div>
 
-                            {passError && (
-                                <div className="mb-4 p-3 bg-red-900/20 border border-red-500/20 text-red-200 rounded text-sm flex items-center gap-2">
-                                    <AlertTriangle size={16} /> {passError}
-                                </div>
-                            )}
+                            <div className="p-5 sm:p-6">
+                                {passError && (
+                                    <div className="mb-4 p-3 bg-red-900/20 border border-red-500/20 text-red-200 rounded-xl text-xs flex items-center gap-2">
+                                        <AlertTriangle size={14} className="shrink-0" /> {passError}
+                                    </div>
+                                )}
 
-                            {passSuccess && (
-                                <div className="mb-4 p-3 bg-green-900/20 border border-green-500/20 text-green-200 rounded text-sm flex items-center gap-2">
-                                    <CheckCircle2 size={16} /> {passSuccess}
-                                </div>
-                            )}
+                                {passSuccess && (
+                                    <div className="mb-4 p-3 bg-green-900/20 border border-green-500/20 text-green-200 rounded-xl text-xs flex items-center gap-2">
+                                        <CheckCircle2 size={14} className="shrink-0" /> {passSuccess}
+                                    </div>
+                                )}
 
-                            <form onSubmit={handleChangePassword} className="space-y-4">
-                                <div>
-                                    <label>Current Password</label>
-                                    <div className="relative">
-                                        <input
-                                            type={showPasswords.current ? "text" : "password"}
-                                            value={passData.current}
-                                            onChange={e => setPassData({ ...passData, current: e.target.value })}
-                                            placeholder="Enter current password"
-                                            required
-                                            className="w-full pr-10"
-                                        />
+                                <form onSubmit={handleChangePassword} className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Current Password</label>
+                                        <div className="relative">
+                                            <input
+                                                type={showPasswords.current ? "text" : "password"}
+                                                value={passData.current}
+                                                onChange={e => setPassData({ ...passData, current: e.target.value })}
+                                                placeholder="Enter current password"
+                                                required
+                                                className="w-full pr-10 bg-white/5 border-white/10 rounded-xl focus:border-primary/50 text-sm"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1"
+                                            >
+                                                {showPasswords.current ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">New Password</label>
+                                        <div className="relative">
+                                            <input
+                                                type={showPasswords.new ? "text" : "password"}
+                                                value={passData.new}
+                                                onChange={e => setPassData({ ...passData, new: e.target.value })}
+                                                placeholder="Min 10 characters"
+                                                required
+                                                className="w-full pr-10 bg-white/5 border-white/10 rounded-xl focus:border-primary/50 text-sm"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1"
+                                            >
+                                                {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
+                                        <p className="text-[9px] text-muted-foreground mt-1 px-1">Requires: Uppercase, Number, Special Symbol.</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Confirm New Password</label>
+                                        <div className="relative">
+                                            <input
+                                                type={showPasswords.confirm ? "text" : "password"}
+                                                value={passData.confirm}
+                                                onChange={e => setPassData({ ...passData, confirm: e.target.value })}
+                                                placeholder="Re-enter new password"
+                                                required
+                                                className="w-full pr-10 bg-white/5 border-white/10 rounded-xl focus:border-primary/50 text-sm"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1"
+                                            >
+                                                {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
                                         <button
                                             type="button"
-                                            onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                            onClick={() => setShowPasswordModal(false)}
+                                            className="w-full sm:w-auto px-6 py-2.5 rounded-xl hover:bg-white/5 text-sm font-bold transition-colors border border-white/5 order-2 sm:order-1"
                                         >
-                                            {showPasswords.current ? <EyeOff size={20} /> : <Eye size={20} />}
+                                            Cancel
                                         </button>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label>New Password</label>
-                                    <div className="relative">
-                                        <input
-                                            type={showPasswords.new ? "text" : "password"}
-                                            value={passData.new}
-                                            onChange={e => setPassData({ ...passData, new: e.target.value })}
-                                            placeholder="Min 10 chars, Upper, Number, Symbol"
-                                            required
-                                            className="w-full pr-10"
-                                        />
                                         <button
-                                            type="button"
-                                            onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                            type="submit"
+                                            disabled={changingPass}
+                                            className="w-full sm:w-auto px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-black uppercase tracking-widest transition-all order-1 sm:order-2 disabled:opacity-50"
                                         >
-                                            {showPasswords.new ? <EyeOff size={20} /> : <Eye size={20} />}
+                                            {changingPass ? 'Updating...' : 'Update Password'}
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground">Min 10 chars, Uppercase, Number, Special Symbol required.</p>
-                                </div>
-
-                                <div>
-                                    <label>Confirm New Password</label>
-                                    <div className="relative">
-                                        <input
-                                            type={showPasswords.confirm ? "text" : "password"}
-                                            value={passData.confirm}
-                                            onChange={e => setPassData({ ...passData, confirm: e.target.value })}
-                                            placeholder="Re-enter new password"
-                                            required
-                                            className="w-full pr-10"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-                                        >
-                                            {showPasswords.confirm ? <EyeOff size={20} /> : <Eye size={20} />}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end gap-3 pt-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPasswordModal(false)}
-                                        className="px-4 py-2 rounded-lg hover:bg-white/5 text-sm transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={changingPass}
-                                        className="btn btn-primary w-fit px-6 py-2 text-sm"
-                                    >
-                                        {changingPass ? 'Updating...' : 'Update Password'}
-                                    </button>
-                                </div>
-                            </form>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* Documentation Modal Overlay */}
                 {showHelpModal && (
-                    <div className="fixed inset-0 flex items-center justify-center z-[100] px-4">
+                    <div className="fixed inset-0 flex items-center justify-center z-[110] px-4 py-6 sm:py-10">
                         <div className="absolute inset-0 bg-[#0a0f1e]/80 backdrop-blur-md" onClick={() => setShowHelpModal(false)}></div>
-                        <div ref={helpModalRef} className="glass-card w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col relative z-10 border border-white/20 shadow-2xl">
-                            <div className="flex justify-between items-center p-6 border-b border-white/10 bg-white/5">
+                        <div ref={helpModalRef} className="glass-card w-full max-w-2xl max-h-full overflow-hidden flex flex-col relative z-10 border border-white/20 shadow-2xl">
+                            <div className="flex justify-between items-center p-5 sm:p-6 border-b border-white/10 bg-white/5">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400">
+                                    <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 shrink-0">
                                         <ShieldCheck size={20} />
                                     </div>
-                                    <div>
-                                        <h3 className="text-xl font-bold">CaseBridge Documentation</h3>
-                                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-0.5">V1.0 Canonical Model</p>
+                                    <div className="min-w-0">
+                                        <h3 className="text-lg sm:text-xl font-bold truncate">CaseBridge Documentation</h3>
+                                        <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-black tracking-[0.2em] mt-0.5">V1.0 Canonical Model</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setShowHelpModal(false)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 text-muted-foreground hover:text-white transition-colors">
+                                <button onClick={() => setShowHelpModal(false)} className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-white/5 text-muted-foreground hover:text-white transition-colors shrink-0">
                                     <X size={20} />
                                 </button>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+                            <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-8 custom-scrollbar">
                                 <section>
-                                    <h4 className="text-blue-400 font-black text-xs uppercase tracking-widest mb-4">Account & Governance</h4>
-                                    <div className="space-y-4 text-sm text-slate-300 leading-relaxed">
+                                    <h4 className="text-blue-400 font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] mb-4">Account & Governance</h4>
+                                    <div className="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
                                         <p><strong>Identity binding:</strong> Your account is protected by military-grade encryption and dual-factor authentication potential. Every action is logged in our immutable audit trail.</p>
-                                        <p><strong>Privileged Access:</strong> Only you and your assigned legal team (Associate Lawyer & Case Manager) have access to your case details and files.</p>
+                                        <p><strong>Privileged Access:</strong> Only you and your assigned legal team have access to your case details and files.</p>
                                     </div>
                                 </section>
 
                                 <section>
-                                    <h4 className="text-indigo-400 font-black text-xs uppercase tracking-widest mb-4">Case Lifecycle</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <h4 className="text-indigo-400 font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] mb-4">Case Lifecycle</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                            <p className="text-xs font-bold text-white mb-2 underline decoration-indigo-500 decoration-2">Scheduling</p>
-                                            <p className="text-[11px] text-slate-400">Time selection is coordinate via Calendly. All meeting history is persisted within our secure database.</p>
+                                            <p className="text-xs font-bold text-white mb-2 underline decoration-indigo-500 decoration-2 underline-offset-4">Scheduling</p>
+                                            <p className="text-[11px] text-slate-400 leading-relaxed">Time selection is coordinate via secure scheduling tokens. All meeting history is persisted within our database.</p>
                                         </div>
                                         <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                            <p className="text-xs font-bold text-white mb-2 underline decoration-emerald-500 decoration-2">Updates</p>
-                                            <p className="text-[11px] text-slate-400">Professional updates are provided by your legal team. You will be notified of any significant milestones.</p>
+                                            <p className="text-xs font-bold text-white mb-2 underline decoration-emerald-500 decoration-2 underline-offset-4">Updates</p>
+                                            <p className="text-[11px] text-slate-400 leading-relaxed">Professional updates are provided by your legal team. You will be notified of any significant milestones.</p>
                                         </div>
                                     </div>
                                 </section>
 
                                 <section>
-                                    <h4 className="text-emerald-400 font-black text-xs uppercase tracking-widest mb-4">Data Sovereignty</h4>
-                                    <p className="text-sm text-slate-300 leading-relaxed">
+                                    <h4 className="text-emerald-400 font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] mb-4">Data Sovereignty</h4>
+                                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                                         CaseBridge ensures your legal data never leaves our secure perimeter. All document transfers use short-lived signed URLs for maximum rotation security.
                                     </p>
                                 </section>
                             </div>
 
-                            <div className="p-6 bg-white/5 border-t border-white/10 flex justify-end">
+                            <div className="p-5 sm:p-6 bg-white/5 border-t border-white/10 flex justify-end">
                                 <button
                                     onClick={() => setShowHelpModal(false)}
-                                    className="btn btn-secondary text-xs px-8"
+                                    className="w-full sm:w-auto btn btn-secondary text-[10px] font-black uppercase tracking-widest px-8"
                                 >
                                     Dismiss
                                 </button>
@@ -356,10 +358,10 @@ export default function Settings() {
             </div>
 
             {loading && (
-                <div className="fixed inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-[100]">
+                <div className="fixed inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-[200]">
                     <Loader2 className="animate-spin text-primary" size={48} />
                 </div>
             )}
-        </ClientLayout>
+        </>
     );
 }

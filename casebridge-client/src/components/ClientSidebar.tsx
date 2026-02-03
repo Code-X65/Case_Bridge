@@ -37,9 +37,13 @@ const NavItem = ({ to, icon: Icon, label, disabled = false, badge = '' }: any) =
     );
 };
 
-export default function ClientSidebar() {
-    const navigate = useNavigate();
+interface ClientSidebarProps {
+    isOpen?: boolean;
+    onClose?: () => void;
+}
 
+export default function ClientSidebar({ isOpen = true, onClose }: ClientSidebarProps) {
+    const navigate = useNavigate();
     const { unreadCount } = useNotifications();
 
     const handleLogout = async () => {
@@ -47,8 +51,20 @@ export default function ClientSidebar() {
         navigate('/login');
     };
 
+    const handleNavClick = () => {
+        // Close mobile menu when navigating
+        if (onClose) {
+            onClose();
+        }
+    };
+
     return (
-        <aside className="fixed left-0 top-0 h-full w-64 glass border-r border-white/10 flex flex-col z-50">
+        <aside
+            className={`fixed left-0 top-0 h-full w-64 glass border-r border-white/10 flex flex-col z-50 
+                lg:translate-x-0 transition-transform duration-300 ease-in-out
+                ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+            `}
+        >
             <div className="p-6">
                 <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400 m-0">
                     CaseBridge
@@ -56,7 +72,7 @@ export default function ClientSidebar() {
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Client Portal</p>
             </div>
 
-            <nav className="flex-1 mt-4">
+            <nav className="flex-1 mt-4" onClick={handleNavClick}>
                 <div className="px-4 mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                     Main
                 </div>

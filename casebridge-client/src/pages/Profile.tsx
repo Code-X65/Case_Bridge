@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import ClientLayout from '../components/ClientLayout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -129,41 +128,39 @@ export default function Profile() {
 
     useGSAP(() => {
         if (statusMsg.text) {
-            gsap.from('.status-msg', { y: -10, opacity: 0, duration: 0.3 });
+            gsap.from('.status-msg', { opacity: 0, duration: 0.3 });
         }
     }, [statusMsg]);
 
     if (loading) return (
-        <ClientLayout>
+        <>
             <div className="flex justify-center py-20">
                 <Loader2 className="animate-spin text-primary" size={32} />
             </div>
-        </ClientLayout>
+        </>
     );
 
     return (
-        <ClientLayout>
-            <div ref={containerRef} className="max-w-4xl">
-                <div className="mb-8 flex items-end justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">My Profile</h1>
-                        <p className="text-muted-foreground mt-1">This is who you are on CaseBridge.</p>
-                    </div>
+        <>
+            <div ref={containerRef} className="max-w-4xl pb-10">
+                <div className="mb-8">
+                    <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">My Profile</h1>
+                    <p className="text-muted-foreground mt-1 text-sm sm:text-base">This is who you are on CaseBridge.</p>
                 </div>
 
                 {/* Section A: Profile Summary Header */}
-                <div className="glass-card mb-8 border-l-4 border-l-blue-500">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <h2 className="text-xl font-bold">{formData.firstName} {formData.lastName}</h2>
-                            <p className="text-muted-foreground text-sm m-0">{formData.email}</p>
+                <div className="glass-card mb-8 border-l-4 border-l-blue-500 p-5 sm:p-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="min-w-0">
+                            <h2 className="text-lg sm:text-xl font-bold truncate">{formData.firstName} {formData.lastName}</h2>
+                            <p className="text-muted-foreground text-xs sm:text-sm m-0 truncate">{formData.email}</p>
                         </div>
-                        <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 rounded-full border border-blue-500/20 w-fit">
-                            <span className="relative flex h-2 w-2">
+                        <div className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-500/10 rounded-full border border-blue-500/20 w-fit shrink-0">
+                            <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-blue-500"></span>
                             </span>
-                            <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">
+                            <span className="text-[9px] sm:text-xs font-bold text-blue-400 uppercase tracking-widest">
                                 {formData.status.toUpperCase()} ACCOUNT
                             </span>
                         </div>
@@ -172,80 +169,80 @@ export default function Profile() {
 
                 {/* Section B: Editable Info */}
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="glass-card">
-                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-6 border-b border-white/10 pb-2">
+                    <div className="glass-card p-5 sm:p-8">
+                        <h3 className="text-[10px] sm:text-xs font-black text-muted-foreground uppercase tracking-[0.2em] mb-6 border-b border-white/10 pb-3">
                             Personal Information
                         </h3>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                             <div>
-                                <label>First Name</label>
+                                <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">First Name</label>
                                 <input
                                     type="text"
                                     value={formData.firstName}
                                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                                    className={errors.firstName ? 'border-red-500/50 focus:ring-red-500/50' : ''}
+                                    className={`w-full ${errors.firstName ? 'border-red-500/50 focus:ring-red-500/50' : ''}`}
                                 />
-                                {errors.firstName && <p className="text-red-400 text-xs mt-1">{errors.firstName}</p>}
+                                {errors.firstName && <p className="text-red-400 text-[10px] sm:text-xs mt-1.5">{errors.firstName}</p>}
                             </div>
                             <div>
-                                <label>Last Name</label>
+                                <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Last Name</label>
                                 <input
                                     type="text"
                                     value={formData.lastName}
                                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                                    className={errors.lastName ? 'border-red-500/50 focus:ring-red-500/50' : ''}
+                                    className={`w-full ${errors.lastName ? 'border-red-500/50 focus:ring-red-500/50' : ''}`}
                                 />
-                                {errors.lastName && <p className="text-red-400 text-xs mt-1">{errors.lastName}</p>}
+                                {errors.lastName && <p className="text-red-400 text-[10px] sm:text-xs mt-1.5">{errors.lastName}</p>}
                             </div>
                         </div>
 
-                        <div className="mt-4">
-                            <label>Email Address</label>
+                        <div className="mt-6">
+                            <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Email Address</label>
                             <div className="relative">
                                 <input
                                     type="email"
                                     value={formData.email}
                                     disabled
-                                    className="opacity-50 cursor-not-allowed bg-white/5 pl-10"
+                                    className="w-full opacity-50 cursor-not-allowed bg-white/5 pl-10"
                                 />
                                 <div className="absolute left-3 top-3.5 text-muted-foreground">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
                                 </div>
                             </div>
-                            <p className="text-[10px] text-muted-foreground mt-1">
+                            <p className="text-[10px] text-muted-foreground mt-2 italic">
                                 Email cannot be changed in this version. Contact support if critical.
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-6">
                             <div>
-                                <label>Phone Number</label>
+                                <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Phone Number</label>
                                 <input
                                     type="tel"
                                     value={formData.phone}
                                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    className={errors.phone ? 'border-red-500/50 focus:ring-red-500/50' : ''}
+                                    className={`w-full ${errors.phone ? 'border-red-500/50 focus:ring-red-500/50' : ''}`}
                                 />
-                                {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
+                                {errors.phone && <p className="text-red-400 text-[10px] sm:text-xs mt-1.5">{errors.phone}</p>}
                             </div>
                             <div>
-                                <label>Country / Region</label>
+                                <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Country / Region</label>
                                 <input
                                     type="text"
                                     value={formData.country}
                                     onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                                    className={errors.country ? 'border-red-500/50 focus:ring-red-500/50' : ''}
+                                    className={`w-full ${errors.country ? 'border-red-500/50 focus:ring-red-500/50' : ''}`}
                                 />
-                                {errors.country && <p className="text-red-400 text-xs mt-1">{errors.country}</p>}
+                                {errors.country && <p className="text-red-400 text-[10px] sm:text-xs mt-1.5">{errors.country}</p>}
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                        <div className="h-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="min-h-[2.5rem]">
                             {statusMsg.text && (
-                                <div className={`status-msg flex items-center gap-2 px-4 py-2 rounded-lg text-sm ${statusMsg.type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                                <div className={`status-msg flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm ${statusMsg.type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
                                     {statusMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
                                     {statusMsg.text}
                                 </div>
@@ -255,7 +252,7 @@ export default function Profile() {
                         <button
                             type="submit"
                             disabled={saving || !hasChanges}
-                            className={`btn w-fit px-8 flex items-center gap-2 ${hasChanges ? 'btn-primary' : 'bg-white/5 text-muted-foreground cursor-not-allowed'}`}
+                            className={`btn w-full sm:w-fit px-8 flex items-center justify-center gap-2 text-sm sm:text-base py-3 sm:py-2.5 transition-all active:scale-[0.98] ${hasChanges ? 'btn-primary' : 'bg-white/5 text-muted-foreground cursor-not-allowed border border-white/5'}`}
                         >
                             {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                             Save Changes
@@ -263,6 +260,6 @@ export default function Profile() {
                     </div>
                 </form>
             </div>
-        </ClientLayout>
+        </>
     );
 }

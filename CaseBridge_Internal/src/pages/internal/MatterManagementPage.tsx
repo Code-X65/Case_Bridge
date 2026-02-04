@@ -28,7 +28,7 @@ export default function MatterManagementPage() {
             const { data } = await supabase
                 .from('matters')
                 .select(`
-                    id, title, description, lifecycle_state, created_at,
+                    id, title, description, lifecycle_state, created_at, matter_number,
                     assignee:assigned_associate ( id, full_name, email )
                 `)
                 .eq('firm_id', session!.firm_id)
@@ -203,7 +203,10 @@ export default function MatterManagementPage() {
                                                     <FileText className="w-5 h-5" />
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-sm tracking-tight">{matter.title}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-bold text-sm tracking-tight">{matter.title}</p>
+                                                        <span className="text-[10px] font-mono text-indigo-400/70">{matter.matter_number}</span>
+                                                    </div>
                                                     <p className="text-[10px] text-slate-500 font-normal truncate max-w-[200px]">{matter.description}</p>
                                                 </div>
                                             </div>

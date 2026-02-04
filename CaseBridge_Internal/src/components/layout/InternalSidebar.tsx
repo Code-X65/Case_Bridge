@@ -3,7 +3,7 @@ import {
     LayoutDashboard, Users, Building2, Briefcase,
     Contact2, FileText, CreditCard, BarChart3,
     Settings, FileClock, Shield, Bell,
-    User, LogOut
+    User, LogOut, Calendar
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -99,9 +99,9 @@ export default function InternalSidebar() {
                         <NavItem label="Subscription Plans" path="/internal/subscription-plans" icon={CreditCard} />
                         <NavItem label="Firm Profile" path="/internal/firm-profile" icon={Building2} />
 
-                        <SectionHeader label="Case Operations" />
                         <NavItem label="Case Intake" path="/internal/intake" icon={FileText} />
                         <NavItem label="Case Management" path="/internal/matters" icon={Briefcase} />
+                        <NavItem label="Firm Calendar" path="/internal/calendar" icon={Calendar} />
                         <NavItem label="Clients" path="/internal/clients" icon={Contact2} />
                         <NavItem label="Document Vault" path="/internal/documents" icon={FileClock} />
 

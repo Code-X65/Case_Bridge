@@ -5,10 +5,10 @@ import { useInternalSession } from '@/hooks/useInternalSession';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Briefcase, FileText, Send, UserPlus,
-    CheckCircle2, AlertCircle, ArrowLeft, Loader2,
-    ShieldCheck, History, Search, Upload, X, Paperclip, Download,
-    Eye, EyeOff, Calendar, Clock
+    Eye, EyeOff, Calendar, Clock, BookOpen, Save as SaveIcon, Loader2 as LoaderIcon
 } from 'lucide-react';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import InternalSidebar from '@/components/layout/InternalSidebar';
 
 export default function MatterWorkspace() {
@@ -24,6 +24,8 @@ export default function MatterWorkspace() {
     const [clientVisible, setClientVisible] = useState(true); // Default to visible per request
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [isUploading, setIsUploading] = useState(false);
+    const [internalNotes, setInternalNotes] = useState('');
+    const [isNotesDirty, setIsNotesDirty] = useState(false);
 
     const isCaseManager = session?.role === 'case_manager' || session?.role === 'admin' || session?.role === 'admin_manager';
 
@@ -47,6 +49,13 @@ export default function MatterWorkspace() {
             return data;
         }
     });
+
+    // Sync notes when data loads
+    useEffect(() => {
+        if (matter?.internal_notes) {
+            setInternalNotes(matter.internal_notes);
+        }
+    }, [matter]);
 
     // 2. Fetch Reports
     const { data: reports } = useQuery({
@@ -198,17 +207,17 @@ export default function MatterWorkspace() {
         }
     });
 
-    const updateMeetingStatus = useMutation({
-        mutationFn: async ({ meetingId, status }: { meetingId: string, status: string }) => {
+    const saveInternalNotes = useMutation({
+        mutationFn: async () => {
             const { error } = await supabase
-                .from('case_meetings')
-                .update({ status, updated_at: new Date().toISOString() })
-                .eq('id', meetingId);
+                .from('matters')
+                .update({ internal_notes: internalNotes })
+                .eq('id', id);
             if (error) throw error;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['matter_meetings', id] });
-            queryClient.invalidateQueries({ queryKey: ['matter_timeline', id] });
+            setIsNotesDirty(false);
+            queryClient.invalidateQueries({ queryKey: ['matter', id] });
         }
     });
 
@@ -263,7 +272,7 @@ export default function MatterWorkspace() {
                             </div>
                             <p className="text-slate-400 flex items-center gap-2 text-sm">
                                 <ShieldCheck className="w-4 h-4" />
-                                Firm Matter ID: <span className="text-indigo-400 font-mono">{matter.id.slice(0, 8)}</span>
+                                File Number: <span className="text-indigo-400 font-bold tracking-widest">{matter.matter_number || 'PENDING'}</span>
                             </p>
                         </div>
 
@@ -287,6 +296,48 @@ export default function MatterWorkspace() {
                         <div className="bg-[#1E293B] border border-white/10 rounded-2xl p-8">
                             <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Case Overview</h3>
                             <p className="text-slate-300 leading-relaxed italic">"{matter.description || 'No description provided.'}"</p>
+                        </div>
+
+                        {/* Internal Legal Notes (Rich Text) */}
+                        <div className="bg-[#1E293B] border border-white/10 rounded-2xl p-8 relative">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                    <BookOpen className="w-4 h-4 text-indigo-400" /> Internal Legal Research & Notes
+                                </h3>
+                                {isNotesDirty && (
+                                    <button
+                                        onClick={() => saveInternalNotes.mutate()}
+                                        disabled={saveInternalNotes.isPending}
+                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all shadow-lg shadow-indigo-600/20"
+                                    >
+                                        {saveInternalNotes.isPending ? <LoaderIcon className="w-3 h-3 animate-spin" /> : <SaveIcon className="w-3 h-3" />}
+                                        Save Notes
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="bg-[#0F172A] rounded-xl overflow-hidden border border-white/5 quill-dark">
+                                <ReactQuill
+                                    theme="snow"
+                                    value={internalNotes}
+                                    onChange={(val) => {
+                                        setInternalNotes(val);
+                                        if (val !== matter.internal_notes) setIsNotesDirty(true);
+                                    }}
+                                    placeholder="Start drafting internal legal notes, research, or strategy here..."
+                                    modules={{
+                                        toolbar: [
+                                            [{ 'header': [1, 2, false] }],
+                                            ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                                            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                                            ['link', 'clean']
+                                        ],
+                                    }}
+                                />
+                            </div>
+                            <p className="mt-3 text-[10px] text-slate-500 italic flex items-center gap-2">
+                                <Lock size={10} /> This content is strictly internal and never shared with the client.
+                            </p>
                         </div>
 
                         {matter.lifecycle_state !== 'closed' && (

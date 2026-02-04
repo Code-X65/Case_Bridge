@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -45,6 +45,45 @@ export default function ProfileSettings() {
     });
 
     const firmName = (profile?.firm as any)?.[0]?.firm?.name || 'Loading...';
+
+
+
+    // Fetch Calendar Connections
+    const { data: connections } = useQuery({
+        queryKey: ['calendar_connections', session?.user_id],
+        enabled: !!session?.user_id,
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('user_calendar_connections')
+                .select('*')
+                .eq('user_id', session!.user_id);
+            return data || [];
+        }
+    });
+
+    const isConnected = (provider: string) => connections?.some(c => c.provider === provider);
+
+    const connectCalendar = async (provider: 'google' | 'outlook') => {
+        try {
+            // In a production environment, we'd use linkIdentity or a custom OAuth flow.
+            // For this phase, we initiate the linkIdentity flow with required scopes.
+            const { error } = await supabase.auth.linkIdentity({
+                provider: provider,
+                options: {
+                    queryParams: {
+                        access_type: 'offline',
+                        prompt: 'consent',
+                    },
+                    scopes: provider === 'google'
+                        ? 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly'
+                        : 'Calendars.ReadWrite Offline_access'
+                }
+            });
+            if (error) throw error;
+        } catch (err: any) {
+            alert(`Error connecting to ${provider}: ${err.message}`);
+        }
+    };
 
     const updateProfile = useMutation({
         mutationFn: async () => {
@@ -211,6 +250,75 @@ export default function ProfileSettings() {
                             </div>
                         </section>
                     )}
+
+                    {/* Ecosystem Synchronization */}
+                    <section className="bg-[#1E293B] border border-white/10 rounded-3xl p-10">
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Calendar size={14} /> Ecosystem Synchronization
+                            </h2>
+                            {connections && connections.length > 0 && (
+                                <span className="bg-emerald-500/10 text-emerald-500 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full border border-emerald-500/20 flex items-center gap-2">
+                                    <CheckCircle2 size={10} /> {connections.length} Active Link{connections.length > 1 ? 's' : ''}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Google Calendar */}
+                            <div className={`p-6 rounded-2xl bg-[#0F172A] border transition-all flex items-center justify-between ${isConnected('google') ? 'border-indigo-500/30' : 'border-white/5 hover:border-white/10'}`}>
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-white/5 rounded-xl">
+                                        <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="Google" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold">Google Calendar</p>
+                                        <p className={`text-[10px] font-bold uppercase tracking-wider ${isConnected('google') ? 'text-emerald-500' : 'text-slate-500'}`}>
+                                            {isConnected('google') ? 'Connected' : 'Disconnected'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => connectCalendar('google')}
+                                    disabled={isConnected('google')}
+                                    className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${isConnected('google')
+                                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 cursor-default'
+                                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 active:scale-[0.95]'
+                                        }`}
+                                >
+                                    {isConnected('google') ? 'Active' : 'Connect'}
+                                </button>
+                            </div>
+
+                            {/* Outlook Calendar */}
+                            <div className={`p-6 rounded-2xl bg-[#0F172A] border transition-all flex items-center justify-between ${isConnected('outlook') ? 'border-indigo-500/30' : 'border-white/5 hover:border-white/10'}`}>
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-white/5 rounded-xl">
+                                        <img src="https://www.microsoft.com/favicon.ico" className="w-6 h-6" alt="Outlook" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold">Outlook 365</p>
+                                        <p className={`text-[10px] font-bold uppercase tracking-wider ${isConnected('outlook') ? 'text-emerald-500' : 'text-slate-500'}`}>
+                                            {isConnected('outlook') ? 'Connected' : 'Disconnected'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => connectCalendar('outlook')}
+                                    disabled={isConnected('outlook')}
+                                    className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${isConnected('outlook')
+                                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 cursor-default'
+                                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 active:scale-[0.95]'
+                                        }`}
+                                >
+                                    {isConnected('outlook') ? 'Active' : 'Connect'}
+                                </button>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-slate-500 italic mt-6 flex items-center gap-2">
+                            <Shield size={10} /> CaseBridge utilizes these connections to prevent double-booking and synchronize your firm deadlines.
+                        </p>
+                    </section>
 
                     {/* Action Bar */}
                     <div className="flex justify-end pt-4">

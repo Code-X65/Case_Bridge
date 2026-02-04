@@ -8,6 +8,8 @@ export interface InternalSession {
     role: string;
     token: string;
     expires_at: string;
+    email?: string;
+    full_name?: string;
 }
 
 export function useInternalSession() {
@@ -21,10 +23,10 @@ export function useInternalSession() {
 
             const { data, error } = await supabase
                 .from('internal_sessions')
-                .select('*')
+                .select('*, profile:profiles(email, full_name)')
                 .eq('user_id', authSession.user.id)
                 .gt('expires_at', new Date().toISOString())
-                .order('issued_at', { ascending: false })
+                .order('created_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
 
@@ -32,8 +34,21 @@ export function useInternalSession() {
                 console.error('Error fetching internal session:', error);
                 return null;
             }
-            return data as InternalSession | null;
+
+            if (data) {
+                const sessionData = {
+                    ...data,
+                    email: data.profile?.email,
+                    full_name: data.profile?.full_name
+                };
+                delete sessionData.profile;
+                return sessionData as InternalSession;
+            }
+
+            return null;
         },
+        staleTime: 1000 * 60 * 5, // 5 minutes
+        gcTime: 1000 * 60 * 60, // 1 hour
     });
 
     const createSession = useMutation({

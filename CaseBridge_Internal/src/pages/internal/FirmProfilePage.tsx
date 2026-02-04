@@ -3,7 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
 import InternalSidebar from '@/components/layout/InternalSidebar';
-import { Loader2, Save, Building2, Globe, Mail, Phone, MapPin, Upload } from 'lucide-react';
+import {
+    Loader2, Save, Building2, Globe, Mail, Phone, MapPin, Upload,
+    ShieldCheck, ShieldAlert, Activity
+} from 'lucide-react';
 
 export default function FirmProfilePage() {
     const { session } = useInternalSession();
@@ -18,6 +21,14 @@ export default function FirmProfilePage() {
         address: '',
         website: '',
     });
+
+    const [securityData, setSecurityData] = useState({
+        enforce_2fa: false,
+        whitelist_ips: [] as string[],
+        session_idle_timeout: 1440,
+        matter_numbering_prefix: 'CB-',
+    });
+    const [ipInput, setIpInput] = useState('');
 
     const { data: firm, isLoading } = useQuery({
         queryKey: ['firm_profile', session?.firm_id],
@@ -44,6 +55,12 @@ export default function FirmProfilePage() {
                 website: firm.website || '',
             });
             setLogoUrl(firm.logo_url || '');
+            setSecurityData({
+                enforce_2fa: firm.enforce_2fa || false,
+                whitelist_ips: firm.whitelist_ips || [],
+                session_idle_timeout: firm.session_idle_timeout || 1440,
+                matter_numbering_prefix: firm.matter_numbering_prefix || 'CB-',
+            });
         }
     }, [firm]);
 
@@ -53,6 +70,7 @@ export default function FirmProfilePage() {
                 .from('firms')
                 .update({
                     ...updatedData,
+                    ...securityData,
                     logo_url: logoUrl,
                     updated_at: new Date().toISOString()
                 })
@@ -71,6 +89,17 @@ export default function FirmProfilePage() {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const addIp = () => {
+        if (ipInput && !securityData.whitelist_ips.includes(ipInput)) {
+            setSecurityData(prev => ({ ...prev, whitelist_ips: [...prev.whitelist_ips, ipInput] }));
+            setIpInput('');
+        }
+    };
+
+    const removeIp = (ip: string) => {
+        setSecurityData(prev => ({ ...prev, whitelist_ips: prev.whitelist_ips.filter(i => i !== ip) }));
     };
 
     if (isLoading) {
@@ -207,6 +236,85 @@ export default function FirmProfilePage() {
                                         value={formData.address}
                                         onChange={handleInputChange}
                                         className="w-full bg-[#0F172A] border border-slate-700 rounded-xl py-4 pl-12 pr-4 text-white focus:border-indigo-500 outline-none transition-all resize-none"
+                                    />
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Security & Governance */}
+                        <section className="bg-[#1E293B] border border-white/10 rounded-2xl p-8">
+                            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Security & Governance
+                            </h2>
+
+                            <div className="space-y-8">
+                                <div className="flex items-center justify-between p-4 bg-[#0F172A] rounded-xl border border-white/5">
+                                    <div>
+                                        <p className="font-bold text-white text-sm">Enforce Two-Factor Authentication</p>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">Global requirement for all firm users</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setSecurityData(s => ({ ...s, enforce_2fa: !s.enforce_2fa }))}
+                                        className={`w-12 h-6 rounded-full transition-all relative ${securityData.enforce_2fa ? 'bg-emerald-600' : 'bg-slate-700'}`}
+                                    >
+                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${securityData.enforce_2fa ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-3">IP Infrastructure Whitelist</label>
+                                    <div className="flex gap-3 mb-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Add CIDR or Static IP (e.g. 192.168.1.1)"
+                                            value={ipInput}
+                                            onChange={e => setIpInput(e.target.value)}
+                                            className="flex-1 bg-[#0F172A] border border-slate-700 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none"
+                                        />
+                                        <button
+                                            onClick={addIp}
+                                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+                                        >
+                                            Add IP
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {securityData.whitelist_ips.map(ip => (
+                                            <div key={ip} className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-lg">
+                                                <span className="text-xs font-mono text-indigo-400">{ip}</span>
+                                                <button onClick={() => removeIp(ip)} className="text-slate-500 hover:text-rose-500"><ShieldAlert size={14} /></button>
+                                            </div>
+                                        ))}
+                                        {securityData.whitelist_ips.length === 0 && (
+                                            <p className="text-xs text-slate-500 italic">No IP restrictions active. Global access permitted.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Operational Defaults */}
+                        <section className="bg-[#1E293B] border border-white/10 rounded-2xl p-8">
+                            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Activity className="w-4 h-4" /> Operational Defaults
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Matter Numbering Prefix</label>
+                                    <input
+                                        type="text"
+                                        value={securityData.matter_numbering_prefix}
+                                        onChange={e => setSecurityData(s => ({ ...s, matter_numbering_prefix: e.target.value }))}
+                                        className="w-full bg-[#0F172A] border border-slate-700 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Session Idle Timeout (Minutes)</label>
+                                    <input
+                                        type="number"
+                                        value={securityData.session_idle_timeout}
+                                        onChange={e => setSecurityData(s => ({ ...s, session_idle_timeout: parseInt(e.target.value) || 1440 }))}
+                                        className="w-full bg-[#0F172A] border border-slate-700 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none"
                                     />
                                 </div>
                             </div>

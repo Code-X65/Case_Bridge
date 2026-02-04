@@ -12,9 +12,11 @@ export default function InternalLoginPage() {
     const { session, createSession } = useInternalSession();
 
     useEffect(() => {
-        if (session) {
+        let isMounted = true;
+        if (session && isMounted) {
             navigate('/internal/dashboard');
         }
+        return () => { isMounted = false; };
     }, [session, navigate]);
 
     const [email, setEmail] = useState('');
@@ -25,6 +27,8 @@ export default function InternalLoginPage() {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (loading) return;
+
         setLoading(true);
         setError(null);
 
@@ -48,7 +52,6 @@ export default function InternalLoginPage() {
             if (profileError) throw profileError;
 
             if (!profile) {
-                // Check if they have a pending registration
                 const { data: pendingReg } = await supabase
                     .from('pending_firm_registrations')
                     .select('id')
@@ -56,28 +59,17 @@ export default function InternalLoginPage() {
                     .maybeSingle();
 
                 await supabase.auth.signOut();
-
-                if (pendingReg) {
-                    throw new Error('Your email verification is incomplete. Please check your inbox for the activation link.');
-                }
-
-                throw new Error('User profile not found. Please contact support.');
+                throw new Error(pendingReg ? 'Email verification incomplete. Check your inbox.' : 'User profile not found.');
             }
 
-            if (profile.status === 'locked') {
+            if (profile.status === 'locked' || profile.status === 'suspended') {
+                const statusMsg = profile.status === 'locked' ? 'Account locked.' : 'Account suspended.';
                 await supabase.auth.signOut();
-                navigate('/auth/locked');
-                return;
-            }
-
-            if (profile.status === 'suspended') {
-                await supabase.auth.signOut();
-                throw new Error('Your account has been suspended. Take it up with your administrator.');
+                if (profile.status === 'locked') navigate('/auth/locked');
+                throw new Error(statusMsg);
             }
 
             // STEP 3: Fetch User Role & Firm
-            // For now, we auto-select the first active role found. 
-            // In a multi-firm scenario, we would show a selection screen here.
             const { data: userFirmRole, error: roleError } = await supabase
                 .from('user_firm_roles')
                 .select('role, firm_id')
@@ -87,47 +79,43 @@ export default function InternalLoginPage() {
                 .single();
 
             if (roleError || !userFirmRole) {
-                // No active role found
                 await supabase.auth.signOut();
-                throw new Error('You are not authorized for any firm. Please contact your administrator.');
+                throw new Error('You are not authorized for any firm.');
             }
 
             // STEP 4: Create Internal Session
-            const newSession = await createSession.mutateAsync({
+            const newSessionRes = await createSession.mutateAsync({
                 firmId: userFirmRole.firm_id,
                 role: userFirmRole.role
             });
 
-            // CRITICAL: Manually update cache to prevent race condition on redirect
+            // Map and clean up nested profile object manually for local cache consistency
+            const newSession = {
+                ...newSessionRes,
+                email: email, // use local email since we just logged in
+                full_name: profile.full_name // if we had it, but we only selected status. 
+                // Let's rely on the query invalidation to fill the rest, or just navigate.
+            };
+
+            // CRITICAL: Manually update cache to provide immediate session for useEffect
             queryClient.setQueryData(['internal_session'], newSession);
 
-            // STEP 5: Redirect based on onboarding state
-            if (profile.first_login_flag) {
-                navigate('/auth/welcome');
-            } else {
-                navigate(resolveUserHome({ role: userFirmRole.role, status: profile.status }));
-            }
+            // STEP 5: Redirect
+            // The useEffect will handle redirect once ['internal_session'] is updated.
+            // We explicitly DON'T navigate here to avoid unmount-vs-state-update races.
 
         } catch (err: any) {
-            console.error('Login error:', err);
+            console.error('Login error detailed:', err);
 
-            // Handle Email Not Confirmed specifically
-            if (err.message?.includes('Email not confirmed') || err.status === 400 && err.message?.includes('confirm')) {
-                setError('Your email is not verified. A new verification link has been sent to your inbox.');
-                try {
-                    await supabase.auth.resend({
-                        type: 'signup',
-                        email: email,
-                    });
-                } catch (resendErr) {
-                    console.error('Failed to resend verification:', resendErr);
-                }
-                setLoading(false);
-                return;
+            // Ignore AbortError if we are navigating away anyway
+            if (err.name === 'AbortError' || err.message?.includes('aborted')) return;
+
+            if (err.message?.includes('Email not confirmed')) {
+                setError('Email not verified. Re-sending link...');
+                await supabase.auth.resend({ type: 'signup', email });
+            } else {
+                setError(err.message || 'Login failed.');
             }
-
-            setError(err.message || 'Login failed. Please check your credentials.');
-        } finally {
             setLoading(false);
         }
     };

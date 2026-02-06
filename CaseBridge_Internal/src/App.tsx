@@ -25,6 +25,7 @@ import ReportingDashboard from './pages/internal/ReportingDashboard';
 import FirmBillingPage from './pages/internal/FirmBillingPage';
 
 import MyMattersPage from './pages/internal/MyMattersPage';
+import MyTasksPage from './pages/internal/MyTasksPage';
 import MatterWorkspace from './pages/internal/matters/MatterWorkspace';
 import NotificationsPage from './pages/internal/NotificationsPage';
 import ProfileSettings from './pages/internal/ProfileSettings';
@@ -81,6 +82,7 @@ function App() {
           <Route path="/internal/clients" element={<ProtectedRoute><ClientBehaviorPage /></ProtectedRoute>} />
           <Route path="/internal/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
           <Route path="/internal/calendar" element={<ProtectedRoute><InternalCalendar /></ProtectedRoute>} />
+          <Route path="/internal/schedule" element={<ProtectedRoute><InternalSchedulePage /></ProtectedRoute>} />
           <Route path="/internal/reports" element={<ProtectedRoute><ReportingDashboard /></ProtectedRoute>} />
 
           <Route path="/internal/staff" element={<ProtectedRoute><StaffManagementPage /></ProtectedRoute>} />
@@ -94,8 +96,11 @@ function App() {
 
           {/* Associate Routes */}
           <Route path="/internal/associate/matters" element={<ProtectedRoute><MyMattersPage /></ProtectedRoute>} />
+          <Route path="/internal/associate/tasks" element={<ProtectedRoute><MyTasksPage /></ProtectedRoute>} />
           <Route path="/internal/associate/schedule" element={<ProtectedRoute><InternalSchedulePage /></ProtectedRoute>} />
           <Route path="/internal/associate/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
+
+          <Route path="/internal/case-manager/tasks" element={<ProtectedRoute><MyTasksPage /></ProtectedRoute>} />
 
           {/* System Pages */}
           <Route path="/internal/firm-profile" element={<ProtectedRoute><FirmProfilePage /></ProtectedRoute>} />

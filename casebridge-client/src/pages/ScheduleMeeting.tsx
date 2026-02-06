@@ -49,7 +49,7 @@ export default function ScheduleMeeting() {
             }
 
             // Section 3 Eligibility
-            const allowedStates = ['under_review', 'in_progress'];
+            const allowedStates = ['submitted', 'under_review', 'in_progress'];
             if (!allowedStates.includes(data.lifecycle_state) || !data.assigned_associate) {
                 alert("This case is not currently eligible for scheduling.");
                 navigate(`/cases/${id}`);

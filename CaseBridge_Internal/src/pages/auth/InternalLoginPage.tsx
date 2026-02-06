@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useInternalSession } from '@/hooks/useInternalSession';
 import { Loader2, ShieldCheck, Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { resolveUserHome } from '@/utils/navigation';
+import AuthNavbar from '@/components/layout/AuthNavbar';
 
 export default function InternalLoginPage() {
     const queryClient = useQueryClient();
@@ -76,7 +76,7 @@ export default function InternalLoginPage() {
                 .eq('user_id', authData.user.id)
                 .eq('status', 'active')
                 .limit(1)
-                .single();
+                .maybeSingle();
 
             if (roleError || !userFirmRole) {
                 await supabase.auth.signOut();
@@ -89,16 +89,8 @@ export default function InternalLoginPage() {
                 role: userFirmRole.role
             });
 
-            // Map and clean up nested profile object manually for local cache consistency
-            const newSession = {
-                ...newSessionRes,
-                email: email, // use local email since we just logged in
-                full_name: profile.full_name // if we had it, but we only selected status. 
-                // Let's rely on the query invalidation to fill the rest, or just navigate.
-            };
-
             // CRITICAL: Manually update cache to provide immediate session for useEffect
-            queryClient.setQueryData(['internal_session'], newSession);
+            queryClient.setQueryData(['internal_session'], newSessionRes);
 
             // STEP 5: Redirect
             // The useEffect will handle redirect once ['internal_session'] is updated.
@@ -121,93 +113,120 @@ export default function InternalLoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-6 text-white relative overflow-hidden">
-            {/* Background Gradients */}
-            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-900/20 via-[#0F172A] to-[#0F172A]" />
-            <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[100px]" />
+        <>
+            <AuthNavbar variant="internal" />
+            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 flex items-center justify-center p-6 text-white relative overflow-hidden pt-24">
+                {/* Animated Background Elements */}
+                <div className="absolute inset-0 overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-indigo-900/30 via-transparent to-transparent" />
+                    <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-900/20 via-transparent to-transparent" />
 
-            <div className="w-full max-w-md bg-white/5 border border-white/10 p-10 rounded-[2rem] backdrop-blur-xl relative z-10 shadow-2xl">
-                <div className="text-center mb-10">
-                    <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/10 shadow-inner">
-                        <ShieldCheck className="w-8 h-8 text-white" />
-                    </div>
-                    <h1 className="text-3xl font-black mb-2 tracking-tight">Internal Portal</h1>
-                    <p className="text-slate-400 font-medium">Secure Access for CaseBridge Staff</p>
+                    {/* Floating Orbs */}
+                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-[120px] animate-pulse" />
+                    <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-[120px] animate-pulse delay-1000" />
                 </div>
 
-                {error && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl mb-6 text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                        {error}
-                    </div>
-                )}
+                {/* Glassmorphic Card */}
+                <div className="w-full max-w-md relative z-10">
+                    <div className="bg-white/[0.03] border border-white/[0.08] p-10 rounded-3xl backdrop-blur-2xl relative shadow-2xl shadow-black/50">
+                        {/* Glass shine effect */}
+                        <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/[0.08] to-transparent pointer-events-none" />
 
-                <form onSubmit={handleLogin} className="space-y-5">
-                    <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Email Address</label>
-                        <div className="relative">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-[#1E293B] border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600 font-medium"
-                                placeholder="name@firm.com"
-                                required
-                            />
+                        <div className="relative z-10">
+                            <div className="text-center mb-10">
+                                <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-500/30 relative group">
+                                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <ShieldCheck className="w-10 h-10 text-white relative z-10" />
+                                </div>
+                                <h1 className="text-4xl font-black mb-3 tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                                    Internal Portal
+                                </h1>
+                                <p className="text-slate-400 font-medium">Secure Access for CaseBridge Staff</p>
+                            </div>
+
+                            {error && (
+                                <div className="bg-red-500/10 border border-red-500/30 backdrop-blur-xl text-red-200 p-4 rounded-2xl mb-6 text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                                    <div className="w-2 h-2 rounded-full bg-red-400 shrink-0 animate-pulse" />
+                                    {error}
+                                </div>
+                            )}
+
+                            <form onSubmit={handleLogin} className="space-y-5">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">
+                                        Email Address
+                                    </label>
+                                    <div className="relative group">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                                        <input
+                                            type="email"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white/[0.05] transition-all placeholder:text-slate-600 font-medium backdrop-blur-xl"
+                                            placeholder="name@firm.com"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="flex justify-between items-center mb-2 px-1">
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                            Password
+                                        </label>
+                                        <a href="#" className="text-xs text-indigo-400 hover:text-indigo-300 font-bold transition-colors">
+                                            Forgot?
+                                        </a>
+                                    </div>
+                                    <div className="relative group">
+                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-3.5 pl-12 pr-12 text-white focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white/[0.05] transition-all placeholder:text-slate-600 font-medium backdrop-blur-xl"
+                                            placeholder="••••••••"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-indigo-400 transition-colors"
+                                        >
+                                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black uppercase tracking-widest py-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6 shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Authenticating...
+                                        </>
+                                    ) : (
+                                        'Sign In'
+                                    )}
+                                </button>
+
+                                <p className="text-center text-xs text-slate-600 mt-6 leading-relaxed">
+                                    Protected by enterprise-grade encryption.
+                                    <br />
+                                    Unauthorized access is prohibited.
+                                </p>
+                            </form>
                         </div>
                     </div>
-                    <div>
-                        <div className="flex justify-between items-center mb-2 px-1">
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Password</label>
-                            <a href="#" className="text-xs text-indigo-400 hover:text-indigo-300 font-bold transition-colors">Forgot?</a>
-                        </div>
-                        <div className="relative">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                            <input
-                                type={showPassword ? "text" : "password"}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-[#1E293B] border border-slate-700 rounded-xl py-3.5 pl-12 pr-12 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600 font-medium"
-                                placeholder="••••••••"
-                                required
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
-                            >
-                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                            </button>
-                        </div>
-                    </div>
+                </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-white text-slate-900 font-black uppercase tracking-widest py-4 rounded-xl hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4 shadow-lg shadow-white/5"
-                    >
-                        {loading ? (
-                            <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                Authenticating...
-                            </>
-                        ) : (
-                            'Sign In'
-                        )}
-                    </button>
-
-                    <p className="text-center text-xs text-slate-600 mt-6">
-                        Protected by enterprise-grade encryption.
-                        <br />
-                        Unauthorized access is prohibited.
-                    </p>
-                </form>
+                <div className="absolute bottom-6 text-center text-[10px] text-slate-700 font-mono tracking-wider">
+                    CASEBRIDGE INTERNAL v2.0.0
+                </div>
             </div>
-
-            <div className="absolute bottom-6 text-center text-[10px] text-slate-700 font-mono">
-                CASEBRIDGE INTERNAL v2.0.0
-            </div>
-        </div>
+        </>
     );
 }

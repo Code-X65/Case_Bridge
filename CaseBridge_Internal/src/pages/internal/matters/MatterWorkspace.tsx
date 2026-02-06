@@ -1,15 +1,19 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Briefcase, FileText, Send, UserPlus,
-    Eye, EyeOff, Calendar, Clock, BookOpen, Save as SaveIcon, Loader2 as LoaderIcon
+    Eye, EyeOff, Calendar, Clock, BookOpen, Save as SaveIcon, Loader2,
+    ArrowLeft, ShieldCheck, Lock, Paperclip, X, Upload, History, AlertCircle,
+    Download, CheckCircle2, Search, Mail, Copy, MessageCircle
 } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import InternalSidebar from '@/components/layout/InternalSidebar';
+import MatterStageTracker from '@/components/matters/MatterStageTracker';
+import MatterTasks from '@/components/matters/MatterTasks';
 
 export default function MatterWorkspace() {
     const { id } = useParams();
@@ -120,7 +124,22 @@ export default function MatterWorkspace() {
         }
     });
 
-    // 5. Fetch Original Intake Documents
+    // 6. Fetch Communication Logs (Roadmap #8)
+    const { data: communications } = useQuery({
+        queryKey: ['matter_communications', id],
+        enabled: !!id,
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('matter_communications')
+                .select('*')
+                .eq('matter_id', id)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return data || [];
+        }
+    });
+
+    // 7. Fetch Original Intake Documents
     const { data: intakeDocs } = useQuery({
         queryKey: ['matter_intake_docs', matter?.case_report_id],
         enabled: !!matter?.case_report_id,
@@ -291,11 +310,28 @@ export default function MatterWorkspace() {
                     </div>
                 </header>
 
+                <MatterStageTracker
+                    matterId={id!}
+                    currentStageId={matter.current_stage_id}
+                    pipelineId={matter.pipeline_id}
+                    isCaseManager={isCaseManager}
+                />
+
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div className="lg:col-span-8 space-y-8">
                         <div className="bg-[#1E293B] border border-white/10 rounded-2xl p-8">
                             <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Case Overview</h3>
                             <p className="text-slate-300 leading-relaxed italic">"{matter.description || 'No description provided.'}"</p>
+                        </div>
+
+                        {/* Stage Specific Tasks & Workflow */}
+                        <div className="bg-[#1E293B] border border-white/10 rounded-2xl p-8 relative overflow-hidden group">
+                            <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-indigo-500/10 transition-all duration-1000" />
+                            <MatterTasks
+                                matterId={id!}
+                                currentStageId={matter.current_stage_id}
+                                isCaseManager={isCaseManager}
+                            />
                         </div>
 
                         {/* Internal Legal Notes (Rich Text) */}
@@ -310,7 +346,7 @@ export default function MatterWorkspace() {
                                         disabled={saveInternalNotes.isPending}
                                         className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all shadow-lg shadow-indigo-600/20"
                                     >
-                                        {saveInternalNotes.isPending ? <LoaderIcon className="w-3 h-3 animate-spin" /> : <SaveIcon className="w-3 h-3" />}
+                                        {saveInternalNotes.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <SaveIcon className="w-3 h-3" />}
                                         Save Notes
                                     </button>
                                 )}
@@ -552,6 +588,51 @@ export default function MatterWorkspace() {
                                 </div>
                             </div>
                             <p className="text-[10px] text-slate-500 italic text-center">Contact information is strictly for professional use within active matters.</p>
+                        </div>
+
+                        <div className="bg-[#1E293B] border border-white/10 rounded-2xl p-8">
+                            <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Mail className="w-4 h-4 text-indigo-400" /> Communication Bridge
+                            </h3>
+                            <div className="bg-black/20 rounded-xl p-4 border border-white/5 mb-6">
+                                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Matter Email Alias</p>
+                                <div className="flex items-center justify-between">
+                                    <code className="text-[11px] text-indigo-300 font-mono">matter-{id?.substring(0, 8)}@firm.casebridge.com</code>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`matter-${id?.substring(0, 8)}@firm.casebridge.com`);
+                                            alert("Matter Alias Copied!");
+                                        }}
+                                        className="text-slate-500 hover:text-white transition-colors"
+                                    >
+                                        <Copy size={12} />
+                                    </button>
+                                </div>
+                                <p className="mt-3 text-[9px] text-slate-600 leading-tight">CC this address to automatically log external emails into this matter file.</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                {communications?.length === 0 ? (
+                                    <div className="text-center py-4 text-slate-600 italic text-[10px]">No external communications logged yet.</div>
+                                ) : (
+                                    communications?.slice(0, 3).map((comm: any) => (
+                                        <div key={comm.id} className="p-3 bg-white/5 rounded-xl border border-white/5 hover:border-indigo-500/30 transition-all cursor-pointer group">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${comm.direction === 'inbound' ? 'bg-cyan-500' : 'bg-indigo-500'}`} />
+                                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{comm.direction}</span>
+                                                </div>
+                                                <span className="text-[9px] text-slate-600 font-bold">{new Date(comm.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            <p className="text-xs font-bold text-white group-hover:text-indigo-400 transition-colors truncate">{comm.subject || 'No Subject'}</p>
+                                            <p className="text-[10px] text-slate-500 truncate mt-0.5">{comm.sender_identity}</p>
+                                        </div>
+                                    ))
+                                )}
+                                {(communications?.length || 0) > 3 && (
+                                    <button className="w-full py-2 text-[10px] font-black uppercase text-indigo-400 hover:text-indigo-300 border-t border-white/5 transition-colors mt-2">View Full Conversation ({communications?.length})</button>
+                                )}
+                            </div>
                         </div>
 
                         <div className="bg-[#1E293B] border border-white/10 rounded-2xl p-8">

@@ -24,7 +24,7 @@ export default function InternalSidebar() {
         queryKey: ['firm', session?.firm_id],
         enabled: !!session?.firm_id,
         queryFn: async () => {
-            const { data } = await supabase.from('firms').select('*').eq('id', session!.firm_id).single();
+            const { data } = await supabase.from('firms').select('*').eq('id', session!.firm_id).maybeSingle();
             return data;
         }
     });

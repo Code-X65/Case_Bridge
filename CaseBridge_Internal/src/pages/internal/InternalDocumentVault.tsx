@@ -9,7 +9,9 @@ import {
     Folder,
     ExternalLink,
     Shield,
-    Loader2
+    Loader2,
+    Eye,
+    X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
@@ -20,6 +22,10 @@ export default function InternalDocumentVault() {
     const [cases, setCases] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Document Viewer State
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewingDocument, setViewingDocument] = useState<{ url: string; name: string } | null>(null);
 
     useEffect(() => {
         const fetchAllDocs = async () => {
@@ -179,6 +185,17 @@ export default function InternalDocumentVault() {
         }
     };
 
+    const handleViewDocument = async (fileUrl: string, fileName: string) => {
+        const { data } = await supabase.storage
+            .from('case_documents')
+            .createSignedUrl(fileUrl, 60);
+
+        if (data) {
+            setViewingDocument({ url: data.signedUrl, name: fileName });
+            setViewerOpen(true);
+        }
+    };
+
     return (
         <div className="flex min-h-screen bg-[#0F172A] text-white font-sans">
             <InternalSidebar />
@@ -267,25 +284,36 @@ export default function InternalDocumentVault() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                             {filteredDocs.map((doc: any) => (
                                                 <div key={doc.id} className="bg-[#1E293B] hover:bg-[#1E293B]/80 border border-white/5 hover:border-indigo-500/30 rounded-xl p-4 transition-all group flex flex-col justify-between h-36">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${doc.source === 'Intake Evidence' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-indigo-500/10 text-indigo-400'
-                                                            }`}>
-                                                            <FileText size={16} />
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleDownload(doc.file_url)}
-                                                            className="text-slate-500 hover:text-white transition-colors"
-                                                            title="Download"
-                                                        >
-                                                            <Download size={16} />
-                                                        </button>
-                                                    </div>
-
                                                     <div>
-                                                        <p className="text-sm font-bold text-white truncate mb-1" title={doc.filename}>{doc.filename}</p>
-                                                        <div className="flex items-center justify-between mt-2">
-                                                            <span className="text-[9px] font-bold uppercase text-slate-500">{doc.source}</span>
-                                                            <span className="text-[9px] text-slate-600">{new Date(doc.uploaded_at).toLocaleDateString()}</span>
+                                                        <div className="flex justify-between items-start">
+                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${doc.source === 'Intake Evidence' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-indigo-500/10 text-indigo-400'
+                                                                }`}>
+                                                                <FileText size={16} />
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={() => handleViewDocument(doc.file_url, doc.filename)}
+                                                                    className="text-slate-500 hover:text-indigo-400 transition-colors"
+                                                                    title="View Document"
+                                                                >
+                                                                    <Eye size={16} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDownload(doc.file_url)}
+                                                                    className="text-slate-500 hover:text-white transition-colors"
+                                                                    title="Download"
+                                                                >
+                                                                    <Download size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <p className="text-sm font-bold text-white truncate mb-1" title={doc.filename}>{doc.filename}</p>
+                                                            <div className="flex items-center justify-between mt-2">
+                                                                <span className="text-[9px] font-bold uppercase text-slate-500">{doc.source}</span>
+                                                                <span className="text-[9px] text-slate-600">{new Date(doc.uploaded_at).toLocaleDateString()}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -295,9 +323,56 @@ export default function InternalDocumentVault() {
                                 );
                             })}
                         </div>
-                    )}
+                    )
+                    }
                 </div>
             </main>
+
+            {/* Document Viewer Modal */}
+            {viewerOpen && viewingDocument && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-[#0F172A]/95 backdrop-blur-xl" onClick={() => setViewerOpen(false)} />
+                    <div className="relative bg-[#1E293B] border border-white/10 w-full max-w-6xl h-[90vh] rounded-3xl overflow-hidden shadow-3xl flex flex-col">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-gradient-to-r from-indigo-600/10 to-transparent">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-indigo-600/20 rounded-xl flex items-center justify-center text-indigo-400 border border-indigo-600/30">
+                                    <FileText size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">{viewingDocument.name}</h3>
+                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Document Viewer</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setViewerOpen(false)} className="text-slate-500 hover:text-white transition-all active:rotate-90">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Document Content */}
+                        <div className="flex-1 overflow-hidden bg-slate-900/50">
+                            <iframe
+                                src={viewingDocument.url}
+                                className="w-full h-full"
+                                title={viewingDocument.name}
+                            />
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 border-t border-white/5 bg-gradient-to-r from-indigo-600/5 to-transparent flex justify-between items-center">
+                            <p className="text-xs text-slate-600 font-bold uppercase tracking-widest">Internal Secure View</p>
+                            <a
+                                href={viewingDocument.url}
+                                download
+                                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl shadow-xl shadow-indigo-600/20 uppercase tracking-widest text-xs transition-all flex items-center gap-2"
+                            >
+                                <Download size={14} />
+                                Download
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

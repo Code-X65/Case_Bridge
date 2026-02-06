@@ -6,14 +6,17 @@ import {
     Briefcase,
     FileText,
     Clock,
-    Shield,
+
     Download,
     ArrowLeft,
     Bell,
-    Calendar
+    Calendar,
+    Shield
 } from 'lucide-react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
+import ClientStageTracker from '../components/cases/ClientStageTracker';
+import ClientTaskTracker from '../components/cases/ClientTaskTracker';
 
 export default function CaseDetail() {
     const { id } = useParams();
@@ -164,11 +167,11 @@ export default function CaseDetail() {
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                        {matter && ['under_review', 'in_progress'].includes(matter.lifecycle_state) && (
+                        {matter && ['submitted', 'under_review', 'in_progress'].includes(matter.lifecycle_state) && (
                             matter.assigned_associate ? (
                                 <Link to={`/cases/${report.id}/schedule`} className="btn flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-500 text-white border-blue-500/20 flex items-center gap-2 shadow-lg shadow-blue-500/20 text-sm py-2 sm:px-4">
                                     <Calendar size={18} />
-                                    Schedule
+                                    Request Meeting
                                 </Link>
                             ) : (
                                 <button disabled className="btn flex-1 sm:flex-none justify-center bg-white/5 text-slate-500 border-white/5 flex items-center gap-2 cursor-not-allowed text-sm py-2 sm:px-4" title="Scheduling will be available once a lawyer is assigned">
@@ -187,6 +190,14 @@ export default function CaseDetail() {
                     </div>
                 </div>
             </div>
+
+            {matter && matter.pipeline_id && (
+                <ClientStageTracker
+                    matterId={matter.id}
+                    currentStageId={matter.current_stage_id}
+                    pipelineId={matter.pipeline_id}
+                />
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
                 {/* Main Interaction History */}
@@ -287,6 +298,14 @@ export default function CaseDetail() {
                             </div>
                         )}
                     </section>
+
+                    {/* Tasks Tracking */}
+                    {matter && (
+                        <ClientTaskTracker
+                            matterId={matter.id}
+                            currentStageId={matter.current_stage_id}
+                        />
+                    )}
 
                     {/* Support & Quick Links */}
                     <section className="case-section glass-card p-6 sm:p-8 bg-gradient-to-b from-white/5 to-transparent">

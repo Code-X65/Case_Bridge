@@ -13,7 +13,8 @@ import {
     Trash2,
     Loader2,
     Filter,
-    Check
+    Check,
+    Eye
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useGSAP } from '@gsap/react';
@@ -34,6 +35,10 @@ export default function GlobalDocuments() {
     const [uploading, setUploading] = useState(false);
     const [uploadData, setUploadData] = useState({ name: '', category: 'General' });
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+    // Document Viewer State
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewingDocument, setViewingDocument] = useState<{ url: string; name: string } | null>(null);
 
     const fetchData = async () => {
         if (!user) return;
@@ -145,6 +150,17 @@ export default function GlobalDocuments() {
             .createSignedUrl(fileUrl, 60);
 
         if (data) window.open(data.signedUrl, '_blank');
+    };
+
+    const handleViewDocument = async (fileUrl: string, fileName: string) => {
+        const { data } = await supabase.storage
+            .from('case_documents')
+            .createSignedUrl(fileUrl, 60);
+
+        if (data) {
+            setViewingDocument({ url: data.signedUrl, name: fileName });
+            setViewerOpen(true);
+        }
     };
 
     const handleDelete = async (docId: string, filePath: string) => {
@@ -368,10 +384,18 @@ export default function GlobalDocuments() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-4 sm:px-0">
                                             {filteredDocs.map((doc: any) => (
                                                 <div key={doc.id} className="glass-card group hover:border-blue-500/30 transition-all p-6 relative overflow-hidden flex flex-col h-44 bg-gradient-to-br from-white/[0.03] to-transparent">
-                                                    <div className="absolute top-0 right-0 p-4 sm:opacity-0 group-hover:opacity-100 transition-all">
+                                                    <div className="absolute top-0 right-0 p-4 sm:opacity-0 group-hover:opacity-100 transition-all flex gap-2">
+                                                        <button
+                                                            onClick={() => handleViewDocument(doc.file_url, doc.filename)}
+                                                            className="p-2 bg-indigo-600 text-white rounded-lg shadow-xl hover:bg-indigo-500"
+                                                            title="View Document"
+                                                        >
+                                                            <Eye size={14} />
+                                                        </button>
                                                         <button
                                                             onClick={() => handleDownload(doc.file_url, doc.id, group.id)}
                                                             className="p-2 bg-blue-600 text-white rounded-lg shadow-xl hover:bg-blue-500"
+                                                            title="Download Document"
                                                         >
                                                             <Download size={14} />
                                                         </button>
@@ -498,6 +522,52 @@ export default function GlobalDocuments() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Document Viewer Modal */}
+            {viewerOpen && viewingDocument && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-[#0F172A]/95 backdrop-blur-xl" onClick={() => setViewerOpen(false)} />
+                    <div className="relative glass-card border border-white/10 w-full max-w-6xl h-[90vh] rounded-3xl overflow-hidden shadow-3xl flex flex-col">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-gradient-to-r from-indigo-600/10 to-transparent">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-indigo-600/20 rounded-xl flex items-center justify-center text-indigo-400 border border-indigo-600/30">
+                                    <FileText size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">{viewingDocument.name}</h3>
+                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Document Viewer</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setViewerOpen(false)} className="text-slate-500 hover:text-white transition-all active:rotate-90">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Document Content */}
+                        <div className="flex-1 overflow-hidden bg-slate-900/50">
+                            <iframe
+                                src={viewingDocument.url}
+                                className="w-full h-full"
+                                title={viewingDocument.name}
+                            />
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 border-t border-white/5 bg-gradient-to-r from-blue-600/5 to-transparent flex justify-between items-center">
+                            <p className="text-xs text-slate-600 font-bold uppercase tracking-widest">Secure Document View</p>
+                            <a
+                                href={viewingDocument.url}
+                                download
+                                className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-xl shadow-blue-600/20 uppercase tracking-widest text-xs transition-all flex items-center gap-2"
+                            >
+                                <Download size={14} />
+                                Download
+                            </a>
+                        </div>
                     </div>
                 </div>
             )}

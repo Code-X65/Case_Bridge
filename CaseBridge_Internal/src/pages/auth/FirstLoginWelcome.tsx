@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { PartyPopper, ArrowRight, ShieldCheck, Briefcase, Zap, CheckCircle2 } from 'lucide-react';
+import { PartyPopper, ArrowRight, ShieldCheck, Briefcase, Zap, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { supabase } from '@/lib/supabase';
 
@@ -9,6 +9,8 @@ export default function FirstLoginWelcome() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [step, setStep] = useState(1);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         confetti({
@@ -24,28 +26,41 @@ export default function FirstLoginWelcome() {
             setStep(s => s + 1);
         } else {
             try {
+                setIsLoading(true);
+                setError(null);
+
                 const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    await supabase
-                        .from('profiles')
-                        .update({
-                            first_login_flag: false,
-                            onboarding_state: 'completed'
-                        })
-                        .eq('id', user.id);
+                if (!user) throw new Error('No active authentication session found.');
+
+                console.log('🏁 Completing onboarding for user:', user.id);
+
+                const { error: updateError } = await supabase
+                    .from('profiles')
+                    .update({
+                        first_login_flag: false,
+                        onboarding_state: 'completed'
+                    })
+                    .eq('id', user.id);
+
+                if (updateError) {
+                    console.error('❌ Profile update failed:', updateError);
+                    throw new Error(`Failed to update profile: ${updateError.message}`);
                 }
+
+                console.log('✅ Profile updated successfully');
+
                 // Invalidate profile status so ProtectedRoute doesn't redirect back here
                 await queryClient.invalidateQueries({ queryKey: ['profile_status'] });
 
-                navigate('/internal/dashboard');
-            } catch (error) {
-                console.warn('Profile update warning:', error);
+                // Allow some time for cache invalidation to propagate
+                setTimeout(() => {
+                    navigate('/internal/dashboard');
+                }, 500);
 
-                // Invalidate anyway just in case it succeeded but threw on something else
-                await queryClient.invalidateQueries({ queryKey: ['profile_status'] });
-
-                // Proceed anyway, strict blocking is not needed for this UX polish
-                navigate('/internal/dashboard');
+            } catch (err: any) {
+                console.error('❌ Onboarding completion error:', err);
+                setError(err.message || 'An unexpected error occurred. Please try again.');
+                setIsLoading(false);
             }
         }
     };
@@ -63,6 +78,13 @@ export default function FirstLoginWelcome() {
                     </div>
 
                     <div className="text-center">
+                        {error && (
+                            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                                <AlertCircle className="w-5 h-5 shrink-0" />
+                                <p className="font-medium">{error}</p>
+                            </div>
+                        )}
+
                         {step === 1 && (
                             <div className="animate-in fade-in zoom-in duration-500">
                                 <div className="w-24 h-24 bg-indigo-500/10 border border-indigo-500/20 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-indigo-500/10">
@@ -117,10 +139,17 @@ export default function FirstLoginWelcome() {
 
                         <button
                             onClick={handleNext}
-                            className="w-full h-16 bg-white text-slate-900 font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-3 transition-all hover:bg-slate-200 group shadow-2xl shadow-indigo-500/10"
+                            disabled={isLoading}
+                            className="w-full h-16 bg-white text-slate-900 font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-3 transition-all hover:bg-slate-200 group shadow-2xl shadow-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <span>{step === 3 ? 'Enter Workspace' : 'Continue'}</span>
-                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                            {isLoading ? (
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                            ) : (
+                                <>
+                                    <span>{step === 3 ? 'Enter Workspace' : 'Continue'}</span>
+                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>

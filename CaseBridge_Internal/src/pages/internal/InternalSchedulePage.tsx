@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
 import {
     Calendar, CheckCircle2, XCircle, Clock,
-    Video, MapPin, Briefcase, User, Mail
+    Video, MapPin, Briefcase, User, Mail, X, Save, AlertCircle
 } from 'lucide-react';
 import InternalSidebar from '@/components/layout/InternalSidebar';
 import { useState } from 'react';
@@ -12,6 +12,16 @@ export default function InternalSchedulePage() {
     const { session } = useInternalSession();
     const queryClient = useQueryClient();
     const [processingId, setProcessingId] = useState<string | null>(null);
+
+    // Modal State
+    const [activeMeeting, setActiveMeeting] = useState<any>(null);
+    const [modalType, setModalType] = useState<'accept' | 'reschedule' | null>(null);
+    const [formData, setFormData] = useState({
+        date: '',
+        time: '',
+        link: '',
+        note: ''
+    });
 
     // Fetch Requests & Upcoming for this Lawyer
     const { data: meetings, isLoading } = useQuery({
@@ -34,7 +44,7 @@ export default function InternalSchedulePage() {
     });
 
     const updateStatus = useMutation({
-        mutationFn: async ({ id, status, note, meetingLink, startTime, endTime }: any) => {
+        mutationFn: async ({ id, status, note, meetingLink, startTime }: any) => {
             const updatePayload: any = {
                 status,
                 updated_at: new Date().toISOString()
@@ -42,15 +52,15 @@ export default function InternalSchedulePage() {
 
             if (status === 'accepted') {
                 updatePayload.confirmed_start = startTime;
-                // Default 1 hour if not specified, though UI should enforce
                 const end = new Date(startTime);
                 end.setHours(end.getHours() + 1);
                 updatePayload.confirmed_end = end.toISOString();
 
                 updatePayload.video_provider = 'zoom';
                 updatePayload.video_meeting_link = meetingLink || 'https://zoom.us/j/placeholder';
-            } else if (status === 'rejected') {
-                updatePayload.rejection_note = note;
+            } else if (status === 'requested') {
+                updatePayload.proposed_start = startTime;
+                updatePayload.internal_note = note;
             }
 
             const { error } = await supabase
@@ -63,32 +73,38 @@ export default function InternalSchedulePage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['lawyer_schedule'] });
             setProcessingId(null);
+            closeModal();
         }
     });
 
-    const handleAccept = (meeting: any) => {
-        // Simple prompt for now - could be a modal in v2
-        const link = prompt("Enter Video Meeting Link (Zoom/Meet):", "https://zoom.us/j/123456789");
-        if (!link) return;
-
-        setProcessingId(meeting.id);
-        updateStatus.mutate({
-            id: meeting.id,
-            status: 'accepted',
-            meetingLink: link,
-            startTime: meeting.proposed_start
+    const openModal = (meeting: any, type: 'accept' | 'reschedule') => {
+        const dateObj = new Date(meeting.proposed_start || meeting.confirmed_start);
+        setActiveMeeting(meeting);
+        setModalType(type);
+        setFormData({
+            date: dateObj.toISOString().split('T')[0],
+            time: dateObj.toTimeString().slice(0, 5),
+            link: meeting.video_meeting_link || 'https://zoom.us/j/123456789',
+            note: meeting.rejection_note || 'Suggested a better time for our team.'
         });
     };
 
-    const handleReject = (meeting: any) => {
-        const note = prompt("Enter Rejection Note (Optional):", "Scheduling conflict.");
-        if (note === null) return;
+    const closeModal = () => {
+        setActiveMeeting(null);
+        setModalType(null);
+    };
 
-        setProcessingId(meeting.id);
+    const handleSubmit = () => {
+        if (!activeMeeting) return;
+        const startTime = new Date(`${formData.date}T${formData.time}`).toISOString();
+
+        setProcessingId(activeMeeting.id);
         updateStatus.mutate({
-            id: meeting.id,
-            status: 'rejected',
-            note
+            id: activeMeeting.id,
+            status: modalType === 'accept' ? 'accepted' : 'requested',
+            meetingLink: formData.link,
+            startTime,
+            note: formData.note
         });
     };
 
@@ -101,7 +117,7 @@ export default function InternalSchedulePage() {
             <main className="ml-64 p-10 max-w-7xl mx-auto">
                 <header className="mb-10">
                     <h1 className="text-3xl font-black tracking-tight mb-2">My Schedule</h1>
-                    <p className="text-slate-400 text-sm">Review incoming requests and manage your upcoming sessions.</p>
+                    <p className="text-slate-400 text-sm">Coordinate sessions with your clients. Meetings cannot be rejected, only rescheduled.</p>
                 </header>
 
                 {isLoading ? (
@@ -122,13 +138,16 @@ export default function InternalSchedulePage() {
                             ) : (
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                                     {pendingRequests.map((req: any) => (
-                                        <div key={req.id} className="bg-[#1E293B] border border-l-4 border-yellow-500 rounded-2xl p-6 shadow-lg relative overflow-hidden">
+                                        <div key={req.id} className="bg-[#1E293B] border border-l-4 border-yellow-500 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
+                                            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity">
+                                                <Calendar size={80} />
+                                            </div>
                                             <div className="flex justify-between items-start mb-6">
                                                 <div>
                                                     <div className="flex items-center gap-2 text-yellow-500 font-bold text-xs uppercase tracking-widest mb-1">
                                                         <Clock size={12} /> Requested
                                                     </div>
-                                                    <h3 className="text-xl font-bold text-white">{new Date(req.proposed_start).toLocaleString()}</h3>
+                                                    <h3 className="text-xl font-bold text-white">{new Date(req.proposed_start).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</h3>
                                                 </div>
                                                 <div className="bg-white/5 p-2 rounded-lg">
                                                     {req.meeting_type === 'virtual' ? <Video className="text-indigo-400" /> : <MapPin className="text-emerald-400" />}
@@ -151,20 +170,20 @@ export default function InternalSchedulePage() {
                                                 )}
                                             </div>
 
-                                            <div className="flex gap-4">
+                                            <div className="flex gap-3">
                                                 <button
-                                                    onClick={() => handleAccept(req)}
+                                                    onClick={() => openModal(req, 'accept')}
                                                     disabled={!!processingId}
-                                                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                                                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                                                 >
-                                                    <CheckCircle2 size={16} /> Accept
+                                                    <CheckCircle2 size={14} /> Accept Request
                                                 </button>
                                                 <button
-                                                    onClick={() => handleReject(req)}
+                                                    onClick={() => openModal(req, 'reschedule')}
                                                     disabled={!!processingId}
-                                                    className="flex-1 bg-white/5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 py-3 rounded-xl font-bold uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-50 border border-white/5 hover:border-red-500/20"
+                                                    className="flex-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-50 border border-indigo-500/20"
                                                 >
-                                                    <XCircle size={16} /> Reject
+                                                    <Calendar size={14} /> Reschedule
                                                 </button>
                                             </div>
                                         </div>
@@ -198,7 +217,13 @@ export default function InternalSchedulePage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => openModal(m, 'reschedule')}
+                                                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-400 rounded-lg text-xs font-bold uppercase tracking-widest transition-all"
+                                            >
+                                                Reschedule
+                                            </button>
                                             {m.video_meeting_link && (
                                                 <a
                                                     href={m.video_meeting_link}
@@ -220,6 +245,91 @@ export default function InternalSchedulePage() {
                     </div>
                 )}
             </main>
+
+            {/* NICE RESCHEDULE MODAL */}
+            {activeMeeting && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-[#1E293B] w-full max-w-lg rounded-3xl border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <header className="p-8 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-indigo-500/10 to-transparent">
+                            <div>
+                                <h2 className="text-xl font-black">{modalType === 'accept' ? 'Confirm Meeting' : 'Propose New Time'}</h2>
+                                <p className="text-xs text-slate-400 mt-1">{activeMeeting.matter?.title}</p>
+                            </div>
+                            <button onClick={closeModal} className="p-2 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all">
+                                <X size={20} />
+                            </button>
+                        </header>
+
+                        <div className="p-8 space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Proposed Date</label>
+                                    <input
+                                        type="date"
+                                        value={formData.date}
+                                        onChange={e => setFormData({ ...formData, date: e.target.value })}
+                                        className="w-full bg-[#0F172A] border border-white/5 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Proposed Time</label>
+                                    <input
+                                        type="time"
+                                        value={formData.time}
+                                        onChange={e => setFormData({ ...formData, time: e.target.value })}
+                                        className="w-full bg-[#0F172A] border border-white/5 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            {modalType === 'accept' && (
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Video Meeting Link (Zoom/Google)</label>
+                                    <div className="relative">
+                                        <Video className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                                        <input
+                                            type="url"
+                                            value={formData.link}
+                                            onChange={e => setFormData({ ...formData, link: e.target.value })}
+                                            placeholder="https://zoom.us/j/..."
+                                            className="w-full bg-[#0F172A] border border-white/5 rounded-xl pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {modalType === 'reschedule' && (
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Reason for Rescheduling</label>
+                                    <textarea
+                                        value={formData.note}
+                                        onChange={e => setFormData({ ...formData, note: e.target.value })}
+                                        className="w-full bg-[#0F172A] border border-white/5 rounded-xl px-4 py-4 text-sm h-24 focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+                                        placeholder="Briefly explain why the original time doesn't work..."
+                                    />
+                                    <p className="text-[10px] text-slate-500 italic flex items-center gap-1">
+                                        <AlertCircle size={10} /> This note will be visible to the client in their portal.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        <footer className="p-8 bg-[#0F172A]/50 border-t border-white/5 flex gap-4">
+                            <button onClick={closeModal} className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all">
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                disabled={!!processingId}
+                                className={`flex-2 px-8 py-3 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg ${modalType === 'accept' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/20'}`}
+                            >
+                                {processingId ? <Clock className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
+                                {modalType === 'accept' ? 'Confirm & Notify' : 'Update Proposal'}
+                            </button>
+                        </footer>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

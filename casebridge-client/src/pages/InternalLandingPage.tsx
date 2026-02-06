@@ -20,13 +20,27 @@ import Lenis from 'lenis';
 
 gsap.registerPlugin(ScrollTrigger);
 
+import { supabase } from '../lib/supabase';
+
 const InternalLandingPage = () => {
     const navigate = useNavigate();
-    const { } = useAuth(); // Note: This might need to check for internal user specific context in future
+    const { } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+    const [hasFirm, setHasFirm] = React.useState<boolean | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+    // CHECK: System restriction to ONE firm
+    useEffect(() => {
+        async function checkFirm() {
+            const { count } = await supabase
+                .from('firms')
+                .select('*', { count: 'exact', head: true });
+            setHasFirm((count || 0) > 0);
+        }
+        checkFirm();
+    }, []);
 
     // Initialize Smooth Scroll and Animations
     useEffect(() => {
@@ -165,12 +179,14 @@ const InternalLandingPage = () => {
                             </ul>
 
                             <div className="flex flex-col sm:flex-row gap-3 max-w-md">
-                                <button
-                                    onClick={() => navigate('/signup')}
-                                    className="h-14 bg-white text-indigo-950 hover:bg-indigo-50 font-bold px-8 rounded-md whitespace-nowrap shadow-xl shadow-white/5 transition-all hover:scale-105"
-                                >
-                                    Start Free Trial
-                                </button>
+                                {!hasFirm && (
+                                    <button
+                                        onClick={() => navigate('/signup')}
+                                        className="h-14 bg-white text-indigo-950 hover:bg-indigo-50 font-bold px-8 rounded-md whitespace-nowrap shadow-xl shadow-white/5 transition-all hover:scale-105"
+                                    >
+                                        Start Free Trial
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => window.location.href = '#demo'}
                                     className="h-14 bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600/20 text-white font-bold px-8 rounded-md whitespace-nowrap transition-all"
@@ -374,12 +390,14 @@ const InternalLandingPage = () => {
                         Join the fastest-growing law firms running on CaseBridge.
                     </p>
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
-                        <button
-                            onClick={() => navigate('/signup')} // Ideally triggers a partner signup flow
-                            className="btn bg-white hover:bg-gray-100 text-indigo-950 font-bold h-14 px-10 rounded-full shadow-lg"
-                        >
-                            Get Started
-                        </button>
+                        {!hasFirm && (
+                            <button
+                                onClick={() => navigate('/signup')}
+                                className="btn bg-white hover:bg-gray-100 text-indigo-950 font-bold h-14 px-10 rounded-full shadow-lg"
+                            >
+                                Get Started
+                            </button>
+                        )}
                         <button
                             className="btn border border-white/10 hover:bg-white/5 text-white h-14 px-10 rounded-full font-semibold"
                         >

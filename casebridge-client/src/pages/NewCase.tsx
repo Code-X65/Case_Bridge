@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
     FileText, Upload,
     Loader2, ShieldCheck, CreditCard, X, Clock, ArrowRight,
-    AlertCircle, Check, Shield
+    AlertCircle, Check, Shield, Building2
 } from 'lucide-react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -98,7 +98,13 @@ export default function NewCase() {
 
     const fetchFirms = async () => {
         const { data } = await supabase.from('firms').select('id, name').eq('status', 'active');
-        if (data) setFirms(data);
+        if (data) {
+            setFirms(data);
+            // AUTO-SELECT if ONLY ONE firm exists (System restriction)
+            if (data.length === 1) {
+                setFormData(prev => ({ ...prev, preferredFirmId: data[0].id }));
+            }
+        }
     };
 
     // Transition Animation
@@ -339,11 +345,19 @@ export default function NewCase() {
                                 <input type="text" value={formData.jurisdiction} onChange={e => setFormData({ ...formData, jurisdiction: e.target.value })} className="w-full" />
                             </div>
                             <div>
-                                <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Preferred Firm</label>
-                                <select value={formData.preferredFirmId} onChange={e => setFormData({ ...formData, preferredFirmId: e.target.value })} className="w-full">
-                                    <option value="">Select a firm...</option>
-                                    {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                                </select>
+                                <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Managing Firm</label>
+                                {firms.length === 1 ? (
+                                    <div className="w-full bg-blue-500/10 border border-blue-500/20 rounded-xl py-3 px-4 text-white flex items-center gap-2">
+                                        <Building2 className="w-4 h-4 text-blue-400" />
+                                        <span className="font-bold">{firms[0].name}</span>
+                                        <span className="text-[10px] bg-blue-500/20 px-2 py-0.5 rounded text-blue-300 uppercase ml-auto">Selected</span>
+                                    </div>
+                                ) : (
+                                    <select value={formData.preferredFirmId} onChange={e => setFormData({ ...formData, preferredFirmId: e.target.value })} className="w-full">
+                                        <option value="">Select a firm...</option>
+                                        {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                    </select>
+                                )}
                             </div>
                         </div>
                     </div>

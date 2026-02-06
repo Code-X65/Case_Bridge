@@ -38,7 +38,7 @@ export default function FirmProfilePage() {
                 .from('firms')
                 .select('*')
                 .eq('id', session!.firm_id)
-                .single();
+                .maybeSingle();
             if (error) throw error;
             return data;
         }

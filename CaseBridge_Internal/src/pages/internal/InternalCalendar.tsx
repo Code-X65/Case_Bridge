@@ -11,7 +11,8 @@ import {
 import {
     ChevronLeft, ChevronRight, Search, Plus,
     Check, X, Calendar as CalendarIcon,
-    ChevronDown, User, CheckCircle2, Clock
+    ChevronDown, User, CheckCircle2, Clock,
+    ExternalLink, Copy, ShieldCheck, Globe
 } from 'lucide-react';
 
 export default function InternalCalendar() {
@@ -19,22 +20,40 @@ export default function InternalCalendar() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode] = useState<'week' | 'month' | 'day'>('week');
     const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(true);
+    const [isGlobalView, setIsGlobalView] = useState(false);
+    const [showSyncModal, setShowSyncModal] = useState(false);
 
     const [newTask, setNewTask] = useState('');
 
+    const isAdmin = session?.role === 'admin_manager' || session?.role === 'admin';
+
+    // Fetch Sync Token
+    const { data: profile } = useQuery({
+        queryKey: ['my_profile_sync', session?.user_id],
+        enabled: !!session?.user_id,
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('calendar_sync_token, preferences')
+                .eq('id', session!.user_id)
+                .single();
+            if (error) throw error;
+            return data;
+        }
+    });
+
     // Fetch Tasks from DB
     const { data: dbTasks, refetch: refetchTasks } = useQuery({
-        queryKey: ['internal_tasks', session?.firm_id, session?.user_id],
+        queryKey: ['internal_tasks', session?.firm_id, session?.user_id, isGlobalView],
         enabled: !!session,
         queryFn: async () => {
             let query = supabase
-                .from('tasks')
-                .select('*')
-                .eq('firm_id', session!.firm_id);
+                .from('matter_tasks')
+                .select('*');
 
-            // If not an admin/manager, only show assigned tasks
-            if (session!.role !== 'admin_manager' && session!.role !== 'case_manager') {
-                query = query.eq('assigned_to', session!.user_id);
+            // If not global view and not an admin/manager, only show assigned tasks
+            if (!isGlobalView && session!.role !== 'admin_manager' && session!.role !== 'case_manager') {
+                query = query.eq('assigned_to_id', session!.user_id);
             }
 
             const { data, error } = await query.order('created_at', { ascending: false });
@@ -45,19 +64,32 @@ export default function InternalCalendar() {
 
     // Fetch Meetings
     const { data: meetings } = useQuery({
-        queryKey: ['calendar_meetings', session?.firm_id],
+        queryKey: ['calendar_meetings', session?.firm_id, session?.user_id, isGlobalView],
         queryFn: async () => {
+            console.log('Fetching meetings for firm:', session?.firm_id, 'Global:', isGlobalView);
+
+            // Note: Standard Supabase join uses the TABLE NAME for the relationship
             const { data, error } = await supabase
                 .from('case_meetings')
                 .select(`
                     *,
-                    matter:case_id!inner(title, firm_id),
-                    client:client_id(first_name, last_name)
+                    matter:matters!inner(title, firm_id),
+                    client:external_users(first_name, last_name)
                 `)
                 .eq('matter.firm_id', session!.firm_id)
                 .order('created_at', { ascending: false });
-            if (error) throw error;
-            return data;
+
+            if (error) {
+                console.error('Meetings fetch error detail:', error);
+                throw error;
+            }
+
+            // Client-side filter for personal vs firm-wide
+            if (!isGlobalView && (session!.role === 'associate_lawyer')) {
+                return data.filter((m: any) => m.lawyer_user_id === session!.user_id);
+            }
+
+            return data || [];
         }
     });
 
@@ -93,10 +125,9 @@ export default function InternalCalendar() {
     const addTask = async (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && newTask.trim() && session) {
             const { error } = await supabase
-                .from('tasks')
+                .from('matter_tasks')
                 .insert({
-                    firm_id: session.firm_id,
-                    assigned_to: session.user_id,
+                    assigned_to_id: session.user_id,
                     created_by: session.user_id,
                     title: newTask.trim(),
                     status: 'pending'
@@ -112,7 +143,7 @@ export default function InternalCalendar() {
     const toggleTask = async (task: any) => {
         const newStatus = task.status === 'completed' ? 'pending' : 'completed';
         const { error } = await supabase
-            .from('tasks')
+            .from('matter_tasks')
             .update({ status: newStatus })
             .eq('id', task.id);
 
@@ -151,9 +182,32 @@ export default function InternalCalendar() {
                         <h2 className="text-xl font-medium text-slate-200">
                             {format(currentDate, 'MMMM yyyy')}
                         </h2>
+
+                        {(isAdmin || session?.role === 'case_manager') && (
+                            <div className="flex items-center gap-2 ml-6 bg-white/5 p-1 rounded-xl border border-white/5">
+                                <button
+                                    onClick={() => setIsGlobalView(false)}
+                                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${!isGlobalView ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                    Personal
+                                </button>
+                                <button
+                                    onClick={() => setIsGlobalView(true)}
+                                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${isGlobalView ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                    Firm-Wide
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setShowSyncModal(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                        >
+                            <ExternalLink size={14} /> Sync to Google
+                        </button>
                         <div className="relative hidden md:block group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
                             <input
@@ -195,8 +249,8 @@ export default function InternalCalendar() {
                                 </div>
                             </div>
                             <div className="grid grid-cols-7 text-center mb-2">
-                                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                                    <div key={d} className="text-[10px] text-slate-500 font-bold py-1">{d}</div>
+                                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                                    <div key={`${d}-${i}`} className="text-[10px] text-slate-500 font-bold py-1">{d}</div>
                                 ))}
                             </div>
                             <div className="grid grid-cols-7 text-center gap-y-1">
@@ -402,6 +456,79 @@ export default function InternalCalendar() {
                     </div>
                 </div>
             </div>
+
+            {/* SYNC MODAL */}
+            {showSyncModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-[#1E293B] w-full max-w-lg rounded-3xl border border-white/10 shadow-2xl p-8 overflow-hidden relative">
+                        <div className="absolute top-0 right-0 p-6">
+                            <button onClick={() => setShowSyncModal(false)} className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-12 h-12 bg-indigo-600/20 rounded-2xl flex items-center justify-center border border-indigo-500/30">
+                                <ShieldCheck className="w-6 h-6 text-indigo-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-white">External Calendar Sync</h3>
+                                <p className="text-xs text-slate-500 uppercase tracking-widest font-black mt-1">iCal Secure Channel</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="bg-black/20 rounded-2xl p-4 border border-white/5">
+                                <p className="text-sm text-slate-300 leading-relaxed">
+                                    Use the link below to subscribe to your CaseBridge schedule in <span className="text-indigo-400 font-bold">Google Calendar</span>, <span className="text-blue-400 font-bold">Outlook</span>, or <span className="text-white font-bold">Apple Calendar</span>.
+                                </p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Your Private Sync Link</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        readOnly
+                                        value={`https://api.casebridge.com/v1/sync/calendar/${profile?.calendar_sync_token || 'generating...'}.ics`}
+                                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-indigo-300 outline-none"
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`https://api.casebridge.com/v1/sync/calendar/${profile?.calendar_sync_token}.ics`);
+                                            alert("Sync Link Copied!");
+                                        }}
+                                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 rounded-xl transition-all active:scale-95 shadow-lg shadow-indigo-600/20"
+                                    >
+                                        <Copy size={18} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mt-8">
+                                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                                    <Globe className="text-cyan-400 w-4 h-4" />
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase">Status</span>
+                                        <span className="text-xs text-white font-bold">Live & Encrypted</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                                    <Clock className="text-emerald-400 w-4 h-4" />
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase">Refresh</span>
+                                        <span className="text-xs text-white font-bold">Every 15 mins</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 pt-6 border-t border-white/5 text-[10px] text-slate-500 italic text-center">
+                            Note: Do not share this link. It provides read-only access to your session schedule.
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -8,7 +8,6 @@ import {
     Search,
     Folder,
     ExternalLink,
-    Shield,
     Loader2,
     Eye,
     X

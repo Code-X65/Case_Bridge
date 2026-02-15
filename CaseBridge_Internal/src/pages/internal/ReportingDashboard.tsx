@@ -7,10 +7,8 @@ import {
     CheckCircle2,
     AlertCircle,
     TrendingUp,
-    Users,
     ArrowUpRight,
     Search,
-    Filter,
     Download
 } from 'lucide-react';
 import InternalSidebar from '@/components/layout/InternalSidebar';
@@ -21,7 +19,7 @@ export default function ReportingDashboard() {
     const [searchTerm, setSearchTerm] = useState('');
 
     // 1. Fetch High-Level Firm Stats via RPC
-    const { data: globalStats, isLoading: statsLoading } = useQuery({
+    const { data: globalStats } = useQuery({
         queryKey: ['firm_reporting_stats', session?.firm_id],
         enabled: !!session?.firm_id,
         queryFn: async () => {
@@ -34,7 +32,7 @@ export default function ReportingDashboard() {
     });
 
     // 2. Fetch Staff Performance Metrics
-    const { data: staffPerformance, isLoading: staffLoading } = useQuery({
+    const { data: staffPerformance } = useQuery({
         queryKey: ['staff_performance', session?.firm_id],
         enabled: !!session?.firm_id,
         queryFn: async () => {

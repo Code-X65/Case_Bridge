@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -46,8 +46,6 @@ export default function ProfileSettings() {
 
     const firmName = (profile?.firm as any)?.[0]?.firm?.name || 'Loading...';
 
-
-
     // Fetch Calendar Connections
     const { data: connections } = useQuery({
         queryKey: ['calendar_connections', session?.user_id],
@@ -63,7 +61,7 @@ export default function ProfileSettings() {
 
     const isConnected = (provider: string) => connections?.some(c => c.provider === provider);
 
-    const connectCalendar = async (provider: 'google' | 'outlook') => {
+    const connectCalendar = async (provider: 'google' | 'azure') => {
         try {
             // In a production environment, we'd use linkIdentity or a custom OAuth flow.
             // For this phase, we initiate the linkIdentity flow with required scopes.
@@ -291,27 +289,27 @@ export default function ProfileSettings() {
                             </div>
 
                             {/* Outlook Calendar */}
-                            <div className={`p-6 rounded-2xl bg-[#0F172A] border transition-all flex items-center justify-between ${isConnected('outlook') ? 'border-indigo-500/30' : 'border-white/5 hover:border-white/10'}`}>
+                            <div className={`p-6 rounded-2xl bg-[#0F172A] border transition-all flex items-center justify-between ${isConnected('azure') ? 'border-indigo-500/30' : 'border-white/5 hover:border-white/10'}`}>
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-white/5 rounded-xl">
                                         <img src="https://www.microsoft.com/favicon.ico" className="w-6 h-6" alt="Outlook" />
                                     </div>
                                     <div>
                                         <p className="text-sm font-bold">Outlook 365</p>
-                                        <p className={`text-[10px] font-bold uppercase tracking-wider ${isConnected('outlook') ? 'text-emerald-500' : 'text-slate-500'}`}>
-                                            {isConnected('outlook') ? 'Connected' : 'Disconnected'}
+                                        <p className={`text-[10px] font-bold uppercase tracking-wider ${isConnected('azure') ? 'text-emerald-500' : 'text-slate-500'}`}>
+                                            {isConnected('azure') ? 'Connected' : 'Disconnected'}
                                         </p>
                                     </div>
                                 </div>
                                 <button
-                                    onClick={() => connectCalendar('outlook')}
-                                    disabled={isConnected('outlook')}
-                                    className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${isConnected('outlook')
+                                    onClick={() => connectCalendar('azure')}
+                                    disabled={isConnected('azure')}
+                                    className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${isConnected('azure')
                                         ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 cursor-default'
                                         : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 active:scale-[0.95]'
                                         }`}
                                 >
-                                    {isConnected('outlook') ? 'Active' : 'Connect'}
+                                    {isConnected('azure') ? 'Active' : 'Connect'}
                                 </button>
                             </div>
                         </div>

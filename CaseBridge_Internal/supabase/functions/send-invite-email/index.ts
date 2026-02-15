@@ -15,12 +15,10 @@ serve(async (req) => {
         const { email, role, firm_name, invite_link, first_name, last_name } = await req.json()
 
         const resendApiKey = Deno.env.get('RESEND_API_KEY')
-        const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY')
         const resendFrom = Deno.env.get('RESEND_FROM_EMAIL') || 'invitations@casebridge.com'
-        const sendgridFrom = Deno.env.get('SENDGRID_FROM_EMAIL') || 'invitations@casebridge.com'
 
-        // If no API key for either provider, log simulation and return success (dev mode)
-        if (!resendApiKey && !sendgridApiKey) {
+        // If no API key found, log simulation and return success (dev mode)
+        if (!resendApiKey) {
             console.log(`📧 EMAIL SIMULATION (No API Keys Found):
     To: ${email}
     Subject: You've been invited to join ${firm_name} on CaseBridge
@@ -133,26 +131,6 @@ serve(async (req) => {
             })
             responseData = await res.json();
             if (!res.ok) throw new Error(`Resend Error: ${JSON.stringify(responseData)}`);
-        } else if (sendgridApiKey) {
-            provider = 'SendGrid';
-            const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sendgridApiKey}`,
-                },
-                body: JSON.stringify({
-                    personalizations: [{ to: [{ email }] }],
-                    from: { email: sendgridFrom, name: 'CaseBridge' },
-                    subject: `You've been invited to join ${firm_name} on CaseBridge`,
-                    content: [{ type: 'text/html', value: emailHtml }],
-                }),
-            })
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(`SendGrid Error: ${JSON.stringify(errData)}`);
-            }
-            responseData = { success: true };
         }
 
         console.log(`✅ Email sent successfully to ${email} via ${provider}`)

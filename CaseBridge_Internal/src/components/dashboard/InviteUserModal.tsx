@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase';
 import { Loader2, Mail, X, Check, Copy } from 'lucide-react';
 import { useInternalSession } from '@/hooks/useInternalSession';
 
+import { sendEmail } from '@/lib/emailjs';
+
 interface InviteUserModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -22,8 +24,8 @@ export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProp
         mutationFn: async () => {
             if (!session) throw new Error('No session');
 
-            // Using the updated RPC signature covering names
-            const { data, error } = await supabase.rpc('create_secure_invitation', {
+            // Using send_branded_invite to match the restored SQL
+            const { data, error } = await supabase.rpc('send_branded_invite', {
                 p_email: email,
                 p_role: role,
                 p_firm_id: session.firm_id,
@@ -32,11 +34,31 @@ export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProp
             });
 
             if (error) throw error;
-            return data as string; // returns the token
+            return data as string; // returns the full URL
         },
-        onSuccess: (token) => {
+        onSuccess: async (result) => {
             queryClient.invalidateQueries({ queryKey: ['firm_invitations'] });
-            setGeneratedLink(`${window.location.origin}/auth/accept-invite?token=${token}`);
+
+            if (result && result.startsWith('http')) {
+                setGeneratedLink(result);
+
+                // Automate EmailJS sending
+                try {
+                    if (!session?.firm_id) throw new Error('No firm ID in session');
+
+                    const { data: firmData } = await supabase.from('firms').select('name').eq('id', session.firm_id).single();
+                    await sendEmail(import.meta.env.VITE_EMAILJS_TEMPLATE_ID_STAFF_INVITE, {
+                        to_email: email,
+                        staff_name: `${firstName} ${lastName}`,
+                        firm_name: firmData?.name || 'CaseBridge Firm',
+                        invite_link: result,
+                        role: role.replace('_', ' ')
+                    });
+                } catch (emailError) {
+                    console.error('Failed to send EmailJS invite:', emailError);
+                    alert('Link generated, but automatic email failed to send. Please share the link manually.');
+                }
+            }
         },
     });
 

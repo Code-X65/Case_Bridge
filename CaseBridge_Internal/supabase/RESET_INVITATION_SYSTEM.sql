@@ -65,7 +65,7 @@ CREATE OR REPLACE FUNCTION public.send_branded_invite(
     p_last_name TEXT,
     p_role TEXT,
     p_firm_id UUID,
-    p_redirect_to TEXT DEFAULT 'http://localhost:5174/auth/accept-invite'
+    p_redirect_to TEXT DEFAULT 'https://case-bridge.vercel.app/auth/accept-invite'
 )
 RETURNS TEXT AS $$
 DECLARE
@@ -135,7 +135,7 @@ RETURNS TEXT AS $$
 DECLARE
     v_invite RECORD;
     v_new_token TEXT;
-    v_redirect_to TEXT := 'http://localhost:5174/auth/accept-invite';
+    v_redirect_to TEXT := 'https://case-bridge.vercel.app/auth/accept-invite';
 BEGIN
     v_new_token := encode(gen_random_bytes(32), 'hex');
     UPDATE public.invitations 

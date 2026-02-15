@@ -16,7 +16,7 @@ The internal platform is designed for legal professionals (Admin Managers, Case 
 *   **SLA & Reporting Module**: Real-time metrics dashboard tracking response times, resolution days, and staff workloads.
 *   **Internal Notifications System**: Real-time alerts for staff (e.g., new intake assigned).
 *   **Audit Logging**: Detailed tracking of critical actions (logins, role changes, data access).
-*   **Multi-Provider Email Functionality**: Supabase Edge Function configured for Resend and SendGrid with configurable production senders.
+*   **Email Functionality**: Supabase Edge Function configured for Resend with configurable production senders.
 *   **Client Vault (Global Documents)**: Clients can manage personal documents independently of cases and use them for new intakes.
 *   **Client Onboarding Refinement**: Premium multi-step onboarding with identity verification simulation and pathway optimization.
 *   **Firm Billing & Subscription**: Fully functional "Billing & Subscription" module with Tier-based governance and automated trials.
@@ -64,7 +64,7 @@ The client portal allows public reporters and invited clients to submit cases, t
 ## 3. General Infrastructure & DevOps
 
 *   **Email Functionality**: 
-    *   Supabase Edge Function configured for Resend and SendGrid with environment-based selection.
+    *   Supabase Edge Function configured for Resend with environment-based selection.
 *   **Production Deployment**:
     *   Setup CI/CD for both projects (Vercel configuration added, GitHub Actions for Supabase and Build verification configured).
 *   **Mobile Responsiveness**:

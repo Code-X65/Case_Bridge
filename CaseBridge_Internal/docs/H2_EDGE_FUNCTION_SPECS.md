@@ -35,7 +35,7 @@ export async function sendInviteEmail(payload: InvitePayload) {
 
   if (error) throw error;
 
-  // 4. Send Email (e.g. Resend / SendGrid)
+  // 4. Send Email (e.g. Resend)
   await emailService.send({
     to: payload.email,
     subject: "You're invited to CaseBridge Internal",

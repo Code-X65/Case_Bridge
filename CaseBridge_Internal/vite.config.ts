@@ -13,6 +13,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@emailjs/browser': path.resolve(__dirname, './node_modules/@emailjs/browser/es/index.js'),
     },
     conditions: ['import', 'module', 'browser', 'default'],
   },

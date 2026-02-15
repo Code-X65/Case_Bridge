@@ -130,12 +130,14 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Resend/Renew Invitation
-CREATE OR REPLACE FUNCTION public.resend_secure_invitation(p_invite_id UUID)
+CREATE OR REPLACE FUNCTION public.resend_secure_invitation(
+    p_invite_id UUID,
+    p_redirect_to TEXT DEFAULT 'https://case-bridge.vercel.app/auth/accept-invite'
+)
 RETURNS TEXT AS $$
 DECLARE
     v_invite RECORD;
     v_new_token TEXT;
-    v_redirect_to TEXT := 'https://case-bridge.vercel.app/auth/accept-invite';
 BEGIN
     v_new_token := encode(gen_random_bytes(32), 'hex');
     UPDATE public.invitations 
@@ -143,7 +145,7 @@ BEGIN
     WHERE id = p_invite_id
     RETURNING * INTO v_invite;
     
-    RETURN v_redirect_to || '?token=' || v_new_token;
+    RETURN p_redirect_to || '?token=' || v_new_token;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

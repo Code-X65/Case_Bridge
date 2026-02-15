@@ -30,7 +30,8 @@ export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProp
                 p_role: role,
                 p_firm_id: session.firm_id,
                 p_first_name: firstName,
-                p_last_name: lastName
+                p_last_name: lastName,
+                p_redirect_to: `${window.location.origin}/auth/accept-invite`
             });
 
             if (error) throw error;

@@ -56,7 +56,8 @@ export default function StaffManagementPage() {
         mutationFn: async (invite: Invitation) => {
             // 1. RPC to regenerate token in DB
             const { data: newLink, error } = await supabase.rpc('resend_secure_invitation', {
-                p_invite_id: invite.id
+                p_invite_id: invite.id,
+                p_redirect_to: `${window.location.origin}/auth/accept-invite`
             });
             if (error) throw error;
 

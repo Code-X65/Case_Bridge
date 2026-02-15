@@ -6,15 +6,12 @@ import {
     Briefcase,
     FileText,
     Clock,
-
     Download,
     ArrowLeft,
     Bell,
     Calendar,
     Shield
 } from 'lucide-react';
-import { useGSAP } from '@gsap/react';
-import gsap from 'gsap';
 import ClientStageTracker from '../components/cases/ClientStageTracker';
 import ClientTaskTracker from '../components/cases/ClientTaskTracker';
 
@@ -82,17 +79,6 @@ export default function CaseDetail() {
 
         if (user && id) fetchCaseData();
     }, [user, id]);
-
-    useGSAP(() => {
-        if (!loading) {
-            gsap.from('.case-section', {
-                opacity: 0,
-                duration: 0.5,
-                stagger: 0.1,
-                ease: 'power2.out'
-            });
-        }
-    }, [loading]);
 
     const handleDownload = async (fileUrl: string) => {
         const { data } = await supabase.storage

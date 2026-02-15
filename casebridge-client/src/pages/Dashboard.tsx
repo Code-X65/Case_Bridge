@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import {
@@ -12,13 +12,10 @@ import {
     Bell
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
 
 export default function Dashboard() {
     const { user } = useAuth();
     const navigate = useNavigate();
-    const containerRef = useRef<HTMLDivElement>(null);
 
     const [userName, setUserName] = useState('');
     const [cases, setCases] = useState<any[]>([]);
@@ -65,20 +62,9 @@ export default function Dashboard() {
 
     const hasCases = cases.length > 0;
 
-    useGSAP(() => {
-        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-        tl.from('h1', { opacity: 0, duration: 0.8 })
-            .from('.header-desc', { opacity: 0, duration: 0.6 }, '-=0.6')
-            .from('.status-card', { opacity: 0, duration: 0.8 }, '-=0.4')
-            .from('.action-card', { opacity: 0, duration: 0.6, stagger: 0.1 }, '-=0.6')
-            .from('.sidebar-item', { opacity: 0, duration: 0.6, stagger: 0.05 }, '-=0.8');
-
-    }, { scope: containerRef });
-
     return (
         <>
-            <div ref={containerRef} className="px-2 sm:px-0">
+            <div className="px-2 sm:px-0">
                 <div className="mb-6 sm:mb-8 lg:mb-10">
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 mb-2">
                         Welcome, {userName || 'Client'}

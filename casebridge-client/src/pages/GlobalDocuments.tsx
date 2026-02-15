@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -17,8 +17,6 @@ import {
     Eye
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useGSAP } from '@gsap/react';
-import gsap from 'gsap';
 
 const CATEGORIES = ['Identity', 'Financial', 'Evidence', 'Corporate', 'General'];
 
@@ -125,18 +123,6 @@ export default function GlobalDocuments() {
     useEffect(() => {
         fetchData();
     }, [user]);
-
-    useGSAP(() => {
-        if (!loading) {
-            gsap.from('.document-group', {
-                opacity: 0,
-                y: 20,
-                duration: 0.5,
-                stagger: 0.1,
-                ease: 'power2.out'
-            });
-        }
-    }, [loading, activeTab]);
 
     const handleDownload = async (fileUrl: string, docId: string, matterId?: string) => {
         await supabase.rpc('track_vault_activity', {

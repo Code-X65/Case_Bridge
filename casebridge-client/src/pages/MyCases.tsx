@@ -1,10 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { FileText, Clock, PlusCircle, ChevronRight } from 'lucide-react';
-import { useGSAP } from '@gsap/react';
-import gsap from 'gsap';
 
 export default function MyCases() {
     const { user } = useAuth();
@@ -25,19 +23,6 @@ export default function MyCases() {
 
         if (user) fetchCases();
     }, [user]);
-
-    const container = useRef<HTMLDivElement>(null);
-
-    useGSAP(() => {
-        if (!loading && cases.length > 0) {
-            gsap.from('.case-item', {
-                opacity: 0,
-                duration: 0.5,
-                stagger: 0.1,
-                ease: 'power2.out'
-            });
-        }
-    }, { scope: container, dependencies: [loading, cases] });
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -84,7 +69,7 @@ export default function MyCases() {
                     </Link>
                 </div>
             ) : (
-                <div ref={container} className="space-y-4">
+                <div className="space-y-4">
                     {cases.map((c) => (
                         <Link key={c.id} to={`/cases/${c.id}`} className="case-item block glass-card hover:border-blue-500/30 transition-all p-4 sm:p-6 group">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

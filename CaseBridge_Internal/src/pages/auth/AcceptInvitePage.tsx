@@ -24,6 +24,7 @@ export default function AcceptInvitePage() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const token = searchParams.get('token');
+    const [isSuccess, setIsSuccess] = useState(false);
     const [authError, setAuthError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -71,9 +72,7 @@ export default function AcceptInvitePage() {
             return true;
         },
         onSuccess: () => {
-            navigate('/internal/login', {
-                state: { message: 'Account created! Please check your email to confirm your account.' }
-            });
+            setIsSuccess(true);
         },
         onError: (error: any) => {
             setAuthError(error.message || 'Failed to create account.');
@@ -99,6 +98,32 @@ export default function AcceptInvitePage() {
         return (
             <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
                 <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
+            </div>
+        );
+    }
+
+    if (isSuccess) {
+        return (
+            <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
+                <div className="w-full max-w-md bg-[#1E293B] border border-white/10 rounded-2xl shadow-2xl overflow-hidden text-center p-10">
+                    <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/30">
+                        <Mail className="w-10 h-10 text-green-400" />
+                    </div>
+                    <h2 className="text-2xl font-black text-white mb-4">Check your email</h2>
+                    <p className="text-slate-400 mb-8 leading-relaxed">
+                        We've sent a verification link to <br />
+                        <strong className="text-white">{invite?.email}</strong>. <br /><br />
+                        Please click the link in the email to verify your account and complete your setup.
+                    </p>
+                    <div className="space-y-4">
+                        <button
+                            onClick={() => navigate('/internal/login')}
+                            className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all border border-white/10"
+                        >
+                            Return to Login
+                        </button>
+                    </div>
+                </div>
             </div>
         );
     }

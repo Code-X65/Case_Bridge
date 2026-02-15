@@ -47,7 +47,7 @@ export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProp
                     if (!session?.firm_id) throw new Error('No firm ID in session');
 
                     const { data: firmData } = await supabase.from('firms').select('name').eq('id', session.firm_id).single();
-                    await sendEmail(import.meta.env.VITE_EMAILJS_TEMPLATE_ID_STAFF_INVITE, {
+                    await sendEmail(import.meta.env.VITE_EMAILJS_TEMPLATE_ID_STAFF_INVITE || 'internal_staff_invite', {
                         to_email: email,
                         staff_name: `${firstName} ${lastName}`,
                         firm_name: firmData?.name || 'CaseBridge Firm',

@@ -13,4 +13,6 @@ export interface Invitation {
     email: string;
     role_preassigned: string;
     token: string;
+    first_name: string | null;
+    last_name: string | null;
 }

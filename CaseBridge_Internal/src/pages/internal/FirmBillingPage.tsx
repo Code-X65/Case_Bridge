@@ -9,8 +9,7 @@ import {
     Clock,
     Download,
     ExternalLink,
-    AlertTriangle,
-    CheckCircle2
+    AlertTriangle
 } from 'lucide-react';
 import InternalLayout from '@/components/layout/InternalLayout';
 import { format } from 'date-fns';
@@ -19,7 +18,7 @@ export default function FirmBillingPage() {
     const { session } = useInternalSession();
 
     // 1. Fetch Subscription Details
-    const { data: subscription, isLoading: subLoading } = useQuery({
+    const { data: subscription } = useQuery({
         queryKey: ['firm_subscription', session?.firm_id],
         enabled: !!session?.firm_id,
         queryFn: async () => {

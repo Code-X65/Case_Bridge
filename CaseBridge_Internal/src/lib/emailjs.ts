@@ -1,4 +1,4 @@
-import emailjs from '@emailjs/browser';
+import * as emailjs from '@emailjs/browser';
 
 // EmailJS Configuration
 const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'QBiJvw08PLY2jnpUI';

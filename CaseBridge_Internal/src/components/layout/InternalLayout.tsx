@@ -21,7 +21,7 @@ interface InternalLayoutProps {
 export default function InternalLayout({ children }: InternalLayoutProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const { session, profile } = useInternalSession();
+    const { session } = useInternalSession();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -104,10 +104,10 @@ export default function InternalLayout({ children }: InternalLayoutProps) {
                                 className="flex items-center gap-3 p-1.5 hover:bg-white/5 rounded-xl transition-all"
                             >
                                 <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center font-black text-sm shadow-lg shadow-indigo-600/20">
-                                    {profile?.first_name?.[0]}{profile?.last_name?.[0]}
+                                    {session?.full_name?.[0]}
                                 </div>
                                 <div className="hidden sm:block text-left">
-                                    <p className="text-sm font-bold leading-none mb-1">{profile?.first_name} {profile?.last_name}</p>
+                                    <p className="text-sm font-bold leading-none mb-1">{session?.full_name}</p>
                                     <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest">{session?.role?.replace('_', ' ')}</p>
                                 </div>
                                 <ChevronDown size={14} className={`text-slate-500 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
@@ -137,7 +137,7 @@ export default function InternalLayout({ children }: InternalLayoutProps) {
 
                                         <div className="px-4 py-3">
                                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Current Firm</p>
-                                            <p className="text-xs font-bold text-white truncate">{session?.firm_name || 'CaseBridge Law'}</p>
+                                            <p className="text-xs font-bold text-white truncate">CaseBridge Law</p>
                                         </div>
                                     </div>
                                 </>

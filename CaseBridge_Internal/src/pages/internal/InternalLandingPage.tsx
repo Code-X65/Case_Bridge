@@ -5,16 +5,12 @@ import {
     ShieldCheck,
     ArrowRight,
     Building2,
-    Users,
     Lock,
     Zap,
     Scale,
-    Gavel,
     LayoutDashboard,
     Globe,
     Server,
-    Activity,
-    Layers
 } from 'lucide-react';
 import LiquidCanvas from '@/components/effects/LiquidCanvas';
 import { useState, useEffect } from 'react';
@@ -32,9 +28,6 @@ export default function InternalLandingPage() {
         checkFirm();
     }, []);
 
-    const formatRole = (role: string) => {
-        return role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-    };
 
     return (
         <div className="min-h-screen bg-[#0A0F1E] text-white overflow-hidden relative font-sans selection:bg-cyan-500/30">

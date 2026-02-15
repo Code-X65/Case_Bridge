@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
-import { Bell, Check, X, FileText, UserPlus, AlertCircle, TrendingUp } from 'lucide-react';
+import { Bell, FileText, UserPlus, AlertCircle, TrendingUp } from 'lucide-react';
 
 export default function NotificationBell() {
     const { session } = useInternalSession();

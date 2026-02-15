@@ -4,7 +4,7 @@ import { useInternalSession } from '@/hooks/useInternalSession';
 import InternalSidebar from '@/components/layout/InternalSidebar';
 import { useNavigate } from 'react-router-dom';
 import {
-    Users, AlertCircle, Clock, Shield,
+    Users, Shield,
     ChevronRight, Loader2, FileText, Calendar,
     MessageSquare, Activity
 } from 'lucide-react';
@@ -148,8 +148,8 @@ export default function ClientBehaviorPage() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border ${c.risk_status === 'High Risk' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                                                            c.risk_status === 'Attention Needed' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                                                'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                        c.risk_status === 'Attention Needed' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                            'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                                         }`}>
                                                         {c.risk_status}
                                                     </span>

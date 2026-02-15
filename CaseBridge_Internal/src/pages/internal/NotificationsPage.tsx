@@ -1,7 +1,7 @@
 
 import { useNotifications } from '@/hooks/useNotifications';
 import InternalSidebar from '@/components/layout/InternalSidebar';
-import { Bell, Check, Clock, Info } from 'lucide-react';
+import { Bell, Check, Clock } from 'lucide-react';
 
 export default function NotificationsPage() {
     const { notifications, isLoading, unreadCount, markAsRead, markAllAsRead } = useNotifications();

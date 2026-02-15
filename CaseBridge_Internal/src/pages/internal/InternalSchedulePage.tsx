@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
 import {
-    Calendar, CheckCircle2, XCircle, Clock,
-    Video, MapPin, Briefcase, User, Mail, X, Save, AlertCircle
+    Calendar, CheckCircle2, Clock,
+    Video, MapPin, Briefcase, User, X, Save, AlertCircle
 } from 'lucide-react';
 import InternalSidebar from '@/components/layout/InternalSidebar';
 import { useState } from 'react';

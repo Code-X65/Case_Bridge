@@ -7,7 +7,7 @@ import {
     Briefcase, FileText, Send, UserPlus,
     Eye, EyeOff, Calendar, Clock, BookOpen, Save as SaveIcon, Loader2,
     ArrowLeft, ShieldCheck, Lock, Paperclip, X, Upload, History, AlertCircle,
-    Download, CheckCircle2, Search, Mail, Copy, MessageCircle
+    Download, CheckCircle2, Search, Mail, Copy
 } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';

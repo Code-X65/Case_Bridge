@@ -138,7 +138,9 @@ export default function RegisterFirmPage() {
                 .maybeSingle();
 
             if (pendingInvite) {
-                setError(`You have a pending invitation to join ${pendingInvite.firms?.name}. Please check your email or log in to accept the invitation.`);
+                const firmAny: any = pendingInvite.firms;
+                const firmNameStr = Array.isArray(firmAny) ? firmAny[0]?.name : firmAny?.name;
+                setError(`You have a pending invitation to join ${firmNameStr || 'a firm'}. Please check your email or log in to accept the invitation.`);
                 setLoading(false);
                 return;
             }

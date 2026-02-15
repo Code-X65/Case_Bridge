@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,37 +16,6 @@ import {
     ChevronRight,
     ChevronLeft
 } from 'lucide-react';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-
-function TargetIcon(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="6" />
-            <circle cx="12" cy="12" r="2" />
-        </svg>
-    );
-}
-
-const STEPS = [
-    { title: 'Identity', icon: User },
-    { title: 'Intent', icon: TargetIcon },
-    { title: 'Timeline', icon: Clock },
-    { title: 'Verification', icon: ShieldCheck },
-];
-
 export default function Onboarding() {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -63,40 +32,12 @@ export default function Onboarding() {
         referralSource: ''
     });
 
-    const stepRef = useRef<HTMLDivElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    useGSAP(() => {
-        gsap.to(stepRef.current, {
-            opacity: 1,
-            x: 0,
-            duration: 0.5,
-            ease: 'power3.out'
-        });
-    }, [step]);
-
     const nextStep = () => {
-        gsap.to(stepRef.current, {
-            opacity: 0,
-            x: -20,
-            duration: 0.3,
-            onComplete: () => {
-                setStep(s => s + 1);
-                gsap.set(stepRef.current, { x: 20 });
-            }
-        });
+        setStep(s => s + 1);
     };
 
     const prevStep = () => {
-        gsap.to(stepRef.current, {
-            opacity: 0,
-            x: 20,
-            duration: 0.3,
-            onComplete: () => {
-                setStep(s => s - 1);
-                gsap.set(stepRef.current, { x: -20 });
-            }
-        });
+        setStep(s => s - 1);
     };
 
     const handleVerification = () => {
@@ -146,14 +87,7 @@ export default function Onboarding() {
 
             if (updateError) throw updateError;
 
-            gsap.to(containerRef.current, {
-                opacity: 0,
-                scale: 0.95,
-                duration: 0.5,
-                onComplete: () => {
-                    navigate('/dashboard');
-                }
-            });
+            navigate('/dashboard');
 
         } catch (err: any) {
             console.error(err);
@@ -174,7 +108,7 @@ export default function Onboarding() {
     };
 
     return (
-        <div ref={containerRef} className="min-h-screen bg-[#020617] flex items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-blue-500/30">
+        <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-blue-500/30">
             {/* Background Decoration */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 z-50"></div>
             <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full"></div>
@@ -198,8 +132,8 @@ export default function Onboarding() {
                     {STEPS.map((s, i) => (
                         <div key={i} className="flex flex-col items-center relative group">
                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 ${step === i ? 'bg-blue-600 border-blue-400 text-white shadow-xl shadow-blue-600/30 scale-110' :
-                                    step > i ? 'bg-green-500/20 border-green-500/40 text-green-400' :
-                                        'bg-white/5 border-white/5 text-slate-600'
+                                step > i ? 'bg-green-500/20 border-green-500/40 text-green-400' :
+                                    'bg-white/5 border-white/5 text-slate-600'
                                 }`}>
                                 <s.icon size={20} />
                             </div>
@@ -216,7 +150,7 @@ export default function Onboarding() {
                 </div>
 
                 {/* Step Container */}
-                <div ref={stepRef} className="glass-card border border-white/10 p-8 md:p-12 min-h-[450px] flex flex-col justify-between rounded-[2.5rem] bg-gradient-to-br from-white/[0.04] to-transparent shadow-2xl transition-all opacity-0">
+                <div className="glass-card border border-white/10 p-8 md:p-12 min-h-[450px] flex flex-col justify-between rounded-[2.5rem] bg-gradient-to-br from-white/[0.04] to-transparent shadow-2xl transition-all">
 
                     {error && (
                         <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl text-xs font-bold flex items-center gap-3">
@@ -241,8 +175,8 @@ export default function Onboarding() {
                                         key={persona.id}
                                         onClick={() => setFormData({ ...formData, personaType: persona.id })}
                                         className={`p-6 rounded-3xl border text-left transition-all group ${formData.personaType === persona.id
-                                                ? 'bg-blue-600 border-blue-400 shadow-xl shadow-blue-600/20'
-                                                : 'bg-white/5 border-white/5 hover:border-white/20'
+                                            ? 'bg-blue-600 border-blue-400 shadow-xl shadow-blue-600/20'
+                                            : 'bg-white/5 border-white/5 hover:border-white/20'
                                             }`}
                                     >
                                         <div className={`mb-4 w-12 h-12 rounded-xl flex items-center justify-center transition-all ${formData.personaType === persona.id ? 'bg-white text-blue-600' : 'bg-slate-800 text-slate-400'
@@ -278,8 +212,8 @@ export default function Onboarding() {
                                         key={goal}
                                         onClick={() => toggleGoal(goal)}
                                         className={`p-5 rounded-2xl border flex items-center justify-between transition-all ${formData.primaryGoals.includes(goal)
-                                                ? 'bg-blue-600 border-blue-400 text-white'
-                                                : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'
+                                            ? 'bg-blue-600 border-blue-400 text-white'
+                                            : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'
                                             }`}
                                     >
                                         <span className="text-xs font-black uppercase tracking-widest">{goal}</span>
@@ -314,8 +248,8 @@ export default function Onboarding() {
                                                 key={opt.id}
                                                 onClick={() => setFormData({ ...formData, urgencyLevel: opt.id })}
                                                 className={`flex-1 py-4 rounded-2xl border transition-all text-[10px] font-black tracking-widest ${formData.urgencyLevel === opt.id
-                                                        ? `${opt.color} border-transparent text-white shadow-lg`
-                                                        : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10'
+                                                    ? `${opt.color} border-transparent text-white shadow-lg`
+                                                    : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10'
                                                     }`}
                                             >
                                                 {opt.label}
@@ -435,3 +369,10 @@ export default function Onboarding() {
         </div>
     );
 }
+
+const STEPS = [
+    { title: 'Identity', icon: User },
+    { title: 'Alignment', icon: Briefcase },
+    { title: 'Priority', icon: Clock },
+    { title: 'Workspace', icon: ShieldCheck }
+];

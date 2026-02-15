@@ -1,10 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-
 export default function Profile() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
@@ -21,7 +18,6 @@ export default function Profile() {
 
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [statusMsg, setStatusMsg] = useState({ text: '', type: '' });
-    const containerRef = useRef<HTMLDivElement>(null);
     const [hasChanges, setHasChanges] = useState(false);
 
     useEffect(() => {
@@ -126,12 +122,6 @@ export default function Profile() {
         }
     };
 
-    useGSAP(() => {
-        if (statusMsg.text) {
-            gsap.from('.status-msg', { opacity: 0, duration: 0.3 });
-        }
-    }, [statusMsg]);
-
     if (loading) return (
         <>
             <div className="flex justify-center py-20">
@@ -142,7 +132,7 @@ export default function Profile() {
 
     return (
         <>
-            <div ref={containerRef} className="max-w-4xl pb-10">
+            <div className="max-w-4xl pb-10">
                 <div className="mb-8">
                     <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">My Profile</h1>
                     <p className="text-muted-foreground mt-1 text-sm sm:text-base">This is who you are on CaseBridge.</p>

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -17,66 +17,16 @@ import {
     Lock as LockIcon,
     ChevronRight
 } from 'lucide-react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGSAP } from '@gsap/react';
-import Lenis from 'lenis';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const LandingPage = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
-    // Initialize Smooth Scroll and Animations
-    useEffect(() => {
-        const lenis = new Lenis({
-            duration: 1.2,
-            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // https://www.desmos.com/calculator/brs54l4x87
-            smoothWheel: true,
-        });
-
-        // Sync Lenis with GSAP ScrollTrigger
-        lenis.on('scroll', ScrollTrigger.update);
-
-        gsap.ticker.add((time) => {
-            lenis.raf(time * 1000);
-        });
-
-        gsap.ticker.lagSmoothing(0);
-
-        return () => {
-            lenis.destroy();
-            gsap.ticker.remove(lenis.raf);
-        };
-    }, []);
-
-    useGSAP(() => {
-        if (!containerRef.current) return;
-
-        // Hero Animations - Pure Fade-In Only
-        const tl = gsap.timeline();
-        tl.from('.gsap-hero-text > *', {
-            opacity: 0,
-            duration: 1,
-            stagger: 0.1,
-            ease: "power3.out"
-        })
-            .from('.gsap-hero-visual', {
-                opacity: 0,
-                duration: 1.2,
-                ease: "power3.out"
-            }, "-=0.8");
-
-        // Note: On-scroll fade-in animations removed per request.
-    }, { scope: containerRef });
-
     return (
-        <div ref={containerRef} className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/30 font-sans">
+        <div className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/30 font-sans">
             {/* Navigation */}
             <nav className="fixed w-full z-50 glass border-b border-white/5 backdrop-blur-xl">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -181,7 +131,7 @@ const LandingPage = () => {
             <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden bg-gradient-to-b from-background via-blue-950/20 to-background">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                        <div className="max-w-2xl gsap-hero-text">
+                        <div className="max-w-2xl">
                             <h1 className="text-4xl lg:text-6xl font-extrabold tracking-tight mb-8 leading-[1.15] text-white">
                                 Professional Legal <br />
                                 <span className="text-blue-400">Representation</span> <br />
@@ -211,9 +161,9 @@ const LandingPage = () => {
                             </p>
                         </div>
 
-                        <div className="relative lg:h-[600px] w-full flex items-center justify-center perspective-1000 gsap-hero-visual">
+                        <div className="relative lg:h-[600px] w-full flex items-center justify-center">
                             {/* Dashboard Visual */}
-                            <div className="relative w-full aspect-[16/9] transform rotate-y-[5deg] rotate-x-[5deg] hover:rotate-0 transition-all duration-700 perspective-1000 group">
+                            <div className="relative w-full aspect-[16/9] group">
                                 <img
                                     src="/assets/hero-dashboard.png"
                                     alt="CaseBridge Dashboard"
@@ -295,7 +245,7 @@ const LandingPage = () => {
             </section>
 
             {/* Social Proof Strip */}
-            <div className="border-y border-white/5 bg-white/[0.02] gsap-brands">
+            <div className="border-y border-white/5 bg-white/[0.02]">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                     <p className="text-center text-sm font-semibold text-muted-foreground uppercase tracking-widest mb-8">
                         Recognized Excellence in Legal Practice
@@ -311,7 +261,7 @@ const LandingPage = () => {
             </div>
 
             {/* Main Feature - Blue Section */}
-            <section className="py-24 bg-gradient-to-br from-indigo-900 to-blue-900 relative overflow-hidden gsap-main-feature">
+            <section className="py-24 bg-gradient-to-br from-indigo-900 to-blue-900 relative overflow-hidden">
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                     <div className="text-center mb-16">
@@ -366,7 +316,7 @@ const LandingPage = () => {
             {/* Stats Cards Section */}
             <section className="-mt-16 pb-20 relative z-20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 gsap-stats">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <StatsCard number="98%" label="Success Rate in Litigation" />
                         <StatsCard number="5,000+" label="Happy Clients Represented" />
                         <StatsCard number="Top Rated" label="For Client Satisfaction & Trust" highlight />
@@ -376,7 +326,6 @@ const LandingPage = () => {
 
             {/* Z-Pattern Features */}
             <div className="py-20 space-y-32">
-                {/* Feature 1 */}
                 <FeatureSection
                     title="Stay connected with"
                     titleHighlight="your legal team"
@@ -386,7 +335,6 @@ const LandingPage = () => {
                     imageSrc="/assets/hero-dashboard.png"
                 />
 
-                {/* Feature 2 */}
                 <FeatureSection
                     title="Visualize your"
                     titleHighlight="case timeline"
@@ -396,7 +344,6 @@ const LandingPage = () => {
                     imageSrc="/assets/feature-pipeline.png"
                 />
 
-                {/* Feature 3 */}
                 <FeatureSection
                     title="Secure access to"
                     titleHighlight="legal documents"
@@ -406,7 +353,6 @@ const LandingPage = () => {
                     imageSrc="/assets/feature-document.png"
                 />
 
-                {/* Feature 4 */}
                 <FeatureSection
                     title="Transparent billing &"
                     titleHighlight="easy payments"
@@ -418,7 +364,7 @@ const LandingPage = () => {
             </div>
 
             {/* Footer / CTA 2 */}
-            <section className="py-24 bg-card border-t border-white/5 gsap-footer-cta">
+            <section className="py-24 bg-card border-t border-white/5">
                 <div className="max-w-4xl mx-auto text-center px-4">
                     <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-8 text-blue-400">
                         <MessageSquare className="w-8 h-8" />
@@ -559,9 +505,9 @@ const FeatureSection = ({
     icon?: React.ReactNode,
     imageSrc?: string
 }) => (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 gsap-feature-section">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className={`flex flex-col lg:flex-row gap-16 items-center ${imageSide === 'right' ? '' : 'lg:flex-row-reverse'}`}>
-            <div className="flex-1 space-y-6 gsap-feature-content">
+            <div className="flex-1 space-y-6">
                 <div className="flex items-center gap-3 mb-2">
                     {icon && <div className="p-3 bg-white/5 rounded-lg border border-white/10">{icon}</div>}
                     <span className="text-sm font-bold text-blue-400 uppercase tracking-widest">Feature Highlight</span>
@@ -579,7 +525,7 @@ const FeatureSection = ({
                     Learn More <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </button>
             </div>
-            <div className="flex-1 w-full gsap-feature-visual">
+            <div className="flex-1 w-full">
                 {/* Feature Visual */}
                 <div className="relative aspect-video rounded-xl bg-gradient-to-br from-card to-background border border-white/10 shadow-2xl overflow-hidden group hover:border-blue-500/30 transition-colors">
                     {imageSrc ? (

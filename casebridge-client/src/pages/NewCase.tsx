@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -7,8 +7,6 @@ import {
     Loader2, ShieldCheck, CreditCard, X, Clock, ArrowRight,
     AlertCircle, Check, Shield, Building2
 } from 'lucide-react';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
 import { usePaystackPayment } from 'react-paystack';
 
 const steps = [
@@ -50,8 +48,6 @@ export default function NewCase() {
         'Corporate Law', 'Family Law', 'Real Estate',
         'Intellectual Property', 'Employment', 'Criminal Defense', 'Other'
     ];
-
-    const containerRef = useRef(null);
 
     // Fetch plans when firm changes
     useEffect(() => {
@@ -106,14 +102,6 @@ export default function NewCase() {
             }
         }
     };
-
-    // Transition Animation
-    useGSAP(() => {
-        gsap.fromTo('.step-content',
-            { opacity: 0 },
-            { opacity: 1, duration: 0.4, ease: 'power2.out' }
-        );
-    }, [step]);
 
     const handleNext = async () => {
         if (step === 1) { // Case Details Validation
@@ -533,24 +521,22 @@ export default function NewCase() {
     };
 
     return (
-        <>
-            <div ref={containerRef} className="pb-10 sm:pb-20">
-                <div className="mb-6 sm:mb-10 text-center">
-                    <h1 className="text-2xl sm:text-3xl font-bold">New Case Report</h1>
-                    <div className="flex justify-center gap-2 mt-4 sm:mt-6">
-                        {steps.map((s, i) => (
-                            <div
-                                key={i}
-                                className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${step >= i ? 'w-8 sm:w-10 bg-blue-500' : 'w-4 sm:w-6 bg-white/10'}`}
-                                title={s.title}
-                            ></div>
-                        ))}
-                    </div>
-                </div>
-                <div className="max-w-6xl mx-auto w-full px-4 sm:px-0">
-                    {renderStep()}
+        <div className="pb-10 sm:pb-20">
+            <div className="mb-6 sm:mb-10 text-center">
+                <h1 className="text-2xl sm:text-3xl font-bold">New Case Report</h1>
+                <div className="flex justify-center gap-2 mt-4 sm:mt-6">
+                    {steps.map((s, i) => (
+                        <div
+                            key={i}
+                            className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${step >= i ? 'w-8 sm:w-10 bg-blue-500' : 'w-4 sm:w-6 bg-white/10'}`}
+                            title={s.title}
+                        ></div>
+                    ))}
                 </div>
             </div>
-        </>
+            <div className="max-w-6xl mx-auto w-full px-4 sm:px-0">
+                {renderStep()}
+            </div>
+        </div>
     );
 }

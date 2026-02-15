@@ -14,13 +14,10 @@ import {
     Download
 } from 'lucide-react';
 import InternalSidebar from '@/components/layout/InternalSidebar';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 
 export default function ReportingDashboard() {
     const { session } = useInternalSession();
-    const containerRef = useRef<HTMLDivElement>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
     // 1. Fetch High-Level Firm Stats via RPC
@@ -50,26 +47,6 @@ export default function ReportingDashboard() {
         }
     });
 
-    useGSAP(() => {
-        if (!statsLoading && !staffLoading) {
-            gsap.from('.stat-card', {
-                opacity: 0,
-                y: 20,
-                duration: 0.6,
-                stagger: 0.1,
-                ease: 'power3.out'
-            });
-            gsap.from('.report-row', {
-                opacity: 0,
-                x: -10,
-                duration: 0.5,
-                stagger: 0.05,
-                delay: 0.3,
-                ease: 'power2.out'
-            });
-        }
-    }, [statsLoading, staffLoading]);
-
     const filteredStaff = staffPerformance?.filter(s =>
         s.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -79,7 +56,7 @@ export default function ReportingDashboard() {
             <InternalSidebar />
 
             <main className="flex-1 ml-64 p-8 lg:p-12 overflow-y-auto">
-                <div ref={containerRef} className="max-w-6xl mx-auto">
+                <div className="max-w-6xl mx-auto">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                         <div>
@@ -109,7 +86,7 @@ export default function ReportingDashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                         <StatCard
                             label="Avg. Response"
-                            value={`${globalStats?.avg_response_hours.toFixed(1)}h`}
+                            value={`${globalStats?.avg_response_hours?.toFixed(1) || 0}h`}
                             sub="Time to assignment"
                             icon={Clock}
                             color="blue"
@@ -117,7 +94,7 @@ export default function ReportingDashboard() {
                         />
                         <StatCard
                             label="Resolution Speed"
-                            value={`${globalStats?.avg_resolution_days.toFixed(1)}d`}
+                            value={`${globalStats?.avg_resolution_days?.toFixed(1) || 0}d`}
                             sub="Avg. time to close"
                             icon={TrendingUp}
                             color="indigo"
@@ -125,15 +102,15 @@ export default function ReportingDashboard() {
                         />
                         <StatCard
                             label="Closing Rate"
-                            value={`${Math.round(globalStats?.closing_rate * 100)}%`}
+                            value={`${Math.round((globalStats?.closing_rate || 0) * 100)}%`}
                             sub="Matter success ratio"
                             icon={CheckCircle2}
                             color="emerald"
                         />
                         <StatCard
                             label="Active Matters"
-                            value={globalStats?.active_matters}
-                            sub={`${globalStats?.pending_review} in review`}
+                            value={globalStats?.active_matters || 0}
+                            sub={`${globalStats?.pending_review || 0} in review`}
                             icon={AlertCircle}
                             color="orange"
                         />
@@ -174,12 +151,12 @@ export default function ReportingDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredStaff?.map((staff, idx) => (
+                                    {filteredStaff?.map((staff: any) => (
                                         <tr key={staff.staff_id} className="report-row border-t border-white/5 hover:bg-white/[0.02] transition-colors group">
                                             <td className="px-8 py-6">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-xs">
-                                                        {staff.full_name?.split(' ').map(n => n[0]).join('')}
+                                                        {staff.full_name?.split(' ').map((n: string) => n[0]).join('')}
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-sm tracking-tight">{staff.full_name}</p>

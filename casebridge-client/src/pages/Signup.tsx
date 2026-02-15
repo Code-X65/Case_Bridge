@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -12,10 +12,9 @@ import {
     ShieldCheck,
     ChevronRight,
     ChevronLeft,
-    CheckCircle2
+    CheckCircle2,
+    AlertCircle
 } from 'lucide-react';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
 
 export default function Signup() {
     const navigate = useNavigate();
@@ -35,9 +34,6 @@ export default function Signup() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const stepRef = useRef<HTMLDivElement>(null);
-    const progressRef = useRef<HTMLDivElement>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
@@ -80,7 +76,6 @@ export default function Signup() {
         setLoading(true);
         setError(null);
         try {
-            // 1. Check if user already exists in external_users
             const { data: existingClient } = await supabase
                 .from('external_users')
                 .select('id')
@@ -93,7 +88,6 @@ export default function Signup() {
                 return;
             }
 
-            // 2. Check if user already exists in internal profiles
             const { data: existingInternal } = await supabase
                 .from('profiles')
                 .select('id')
@@ -109,7 +103,7 @@ export default function Signup() {
             proceedToNextStep();
         } catch (err) {
             console.error("Email check error:", err);
-            proceedToNextStep(); // Fallback
+            proceedToNextStep();
         } finally {
             setLoading(false);
         }
@@ -117,28 +111,12 @@ export default function Signup() {
 
     const proceedToNextStep = () => {
         setError(null);
-        gsap.to(stepRef.current, {
-            opacity: 0,
-            x: -20,
-            duration: 0.3,
-            onComplete: () => {
-                setStep(s => s + 1);
-                gsap.fromTo(stepRef.current, { x: 20, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3 });
-            }
-        });
+        setStep(s => s + 1);
     };
 
     const prevStep = () => {
         setError(null);
-        gsap.to(stepRef.current, {
-            opacity: 0,
-            x: 20,
-            duration: 0.3,
-            onComplete: () => {
-                setStep(s => s - 1);
-                gsap.fromTo(stepRef.current, { x: -20, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3 });
-            }
-        });
+        setStep(s => s - 1);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -176,26 +154,19 @@ export default function Signup() {
         }
     };
 
-    useGSAP(() => {
-        gsap.to(progressRef.current, {
-            width: `${(step / 3) * 100}%`,
-            duration: 0.5,
-            ease: "power2.out"
-        });
-    }, [step]);
-
     return (
         <div className="page-container bg-[#020617] relative overflow-hidden">
-            {/* Animated background elements */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
             </div>
 
             <div className="glass-card auth-card relative z-10 border-white/5 bg-slate-900/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
-                {/* Progress Bar */}
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-white/5">
-                    <div ref={progressRef} className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                    <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-500"
+                        style={{ width: `${(step / 3) * 100}%` }}
+                    />
                 </div>
 
                 <div className="p-2 sm:p-4">
@@ -222,7 +193,7 @@ export default function Signup() {
                         </div>
                     )}
 
-                    <div ref={stepRef}>
+                    <div>
                         {step === 1 && (
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -433,10 +404,3 @@ export default function Signup() {
         </div>
     );
 }
-
-// Helper components
-const AlertCircle = ({ size }: { size: number }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
-);

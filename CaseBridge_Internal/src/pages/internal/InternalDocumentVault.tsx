@@ -14,8 +14,6 @@ import {
     X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
 
 export default function InternalDocumentVault() {
     const { session } = useInternalSession();
@@ -35,8 +33,6 @@ export default function InternalDocumentVault() {
             console.log('Fetching vault items...');
 
             // 1. Fetch Matters (Active Cases)
-            // Removed the lifecycle_state filter to ensure we get everything if possible, though matters usually have state.
-            // RLS handles visibility.
             const { data: mattersData, error: mattersError } = await supabase
                 .from('matters')
                 .select(`
@@ -68,9 +64,6 @@ export default function InternalDocumentVault() {
 
 
             // 2. Fetch Pending Intakes (Not yet turned into matters)
-            // RLS for case_reports should allow Case Managers to view all in firm.
-            // Associate Lawyers might not see unassigned reports unless explicitly assigned (which makes them matters usually)
-            // But we'll try to fetch.
             const { data: intakesData, error: intakesError } = await supabase
                 .from('case_reports')
                 .select(`
@@ -163,17 +156,6 @@ export default function InternalDocumentVault() {
 
         fetchAllDocs();
     }, [session]);
-
-    useGSAP(() => {
-        if (!loading) {
-            gsap.from('.document-group', {
-                opacity: 0,
-                duration: 0.5,
-                stagger: 0.1,
-                ease: 'power2.out'
-            });
-        }
-    }, [loading]);
 
     const handleDownload = async (fileUrl: string) => {
         const { data } = await supabase.storage

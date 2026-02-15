@@ -1,22 +1,8 @@
 import { useNotifications } from '../hooks/useNotifications';
 import { Bell, Check, Clock, Shield, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useGSAP } from '@gsap/react';
-import gsap from 'gsap';
-
 export default function NotificationsPage() {
     const { notifications, isLoading, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-
-    useGSAP(() => {
-        if (!isLoading) {
-            gsap.from('.notification-card', {
-                opacity: 0,
-                duration: 0.5,
-                stagger: 0.1,
-                ease: 'power2.out'
-            });
-        }
-    }, [isLoading]);
 
     return (
         <>

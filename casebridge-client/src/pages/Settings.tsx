@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -6,35 +6,12 @@ import {
     Loader2, CheckCircle2, AlertTriangle, X, Eye, EyeOff
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-
-const SettingItem = ({ icon: Icon, title, description, badge = '', onClick, destructive = false }: any) => (
-    <button
-        onClick={onClick}
-        className="w-full text-left glass-card flex items-start gap-3 sm:gap-4 hover:border-white/20 transition-all group mb-3 sm:mb-4 p-4 sm:p-5"
-    >
-        <div className={`p-2.5 sm:p-3 rounded-xl ${destructive ? 'bg-red-500/10 text-red-400' : 'bg-white/5 text-muted-foreground'} group-hover:scale-110 transition-transform shrink-0`}>
-            <Icon size={20} className="sm:w-6 sm:h-6" />
-        </div>
-        <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h3 className={`font-semibold text-sm sm:text-base ${destructive ? 'text-red-400' : 'text-foreground'}`}>{title}</h3>
-                {badge && <span className="text-[8px] sm:text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded uppercase tracking-wider font-bold whitespace-nowrap">{badge}</span>}
-            </div>
-            <p className="text-xs sm:text-sm text-muted-foreground m-0 leading-relaxed line-clamp-2 sm:line-clamp-none">{description}</p>
-        </div>
-        <ChevronRight size={18} className="text-muted-foreground/30 mt-1 sm:mt-4 group-hover:translate-x-1 transition-transform shrink-0" />
-    </button>
-);
-
 export default function Settings() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [showHelpModal, setShowHelpModal] = useState(false);
-    const helpModalRef = useRef<HTMLDivElement>(null);
 
     // Password Logic
     const [passData, setPassData] = useState({ current: '', new: '', confirm: '' });
@@ -42,24 +19,6 @@ export default function Settings() {
     const [passError, setPassError] = useState('');
     const [passSuccess, setPassSuccess] = useState('');
     const [changingPass, setChangingPass] = useState(false);
-    const modalRef = useRef<HTMLDivElement>(null);
-    useGSAP(() => {
-        if (showPasswordModal) {
-            gsap.fromTo(modalRef.current,
-                { opacity: 0 },
-                { opacity: 1, duration: 0.3, ease: 'power2.out' }
-            );
-        }
-    }, [showPasswordModal]);
-
-    useGSAP(() => {
-        if (showHelpModal) {
-            gsap.fromTo(helpModalRef.current,
-                { opacity: 0 },
-                { opacity: 1, duration: 0.3, ease: 'power2.out' }
-            );
-        }
-    }, [showHelpModal]);
 
     const handleLogout = async () => {
         setLoading(true);
@@ -185,7 +144,7 @@ export default function Settings() {
                 {showPasswordModal && (
                     <div className="fixed inset-0 flex items-center justify-center z-[110] px-4 py-8">
                         <div className="absolute inset-0 bg-[#0a0f1e]/80 backdrop-blur-md" onClick={() => setShowPasswordModal(false)}></div>
-                        <div ref={modalRef} className="glass-card w-full max-w-lg border border-white/20 shadow-2xl bg-[#0a0f1e]/90 relative z-10 overflow-hidden">
+                        <div className="glass-card w-full max-w-lg border border-white/20 shadow-2xl bg-[#0a0f1e]/90 relative z-10 overflow-hidden">
                             <div className="flex justify-between items-center p-5 sm:p-6 border-b border-white/10">
                                 <h3 className="text-lg sm:text-xl font-bold">Change Password</h3>
                                 <button onClick={() => setShowPasswordModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/5 text-muted-foreground hover:text-white transition-colors">
@@ -297,7 +256,7 @@ export default function Settings() {
                 {showHelpModal && (
                     <div className="fixed inset-0 flex items-center justify-center z-[110] px-4 py-6 sm:py-10">
                         <div className="absolute inset-0 bg-[#0a0f1e]/80 backdrop-blur-md" onClick={() => setShowHelpModal(false)}></div>
-                        <div ref={helpModalRef} className="glass-card w-full max-w-2xl max-h-full overflow-hidden flex flex-col relative z-10 border border-white/20 shadow-2xl">
+                        <div className="glass-card w-full max-w-2xl max-h-full overflow-hidden flex flex-col relative z-10 border border-white/20 shadow-2xl">
                             <div className="flex justify-between items-center p-5 sm:p-6 border-b border-white/10 bg-white/5">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 shrink-0">
@@ -363,5 +322,38 @@ export default function Settings() {
                 </div>
             )}
         </>
+    );
+}
+
+function SettingItem({ icon: Icon, title, description, badge, destructive, onClick }: any) {
+    return (
+        <div
+            onClick={onClick}
+            className={`
+                group flex items-center gap-4 p-4 rounded-2xl border border-white/5 
+                hover:border-white/10 hover:bg-white/[0.02] cursor-pointer transition-all duration-300 mb-2
+                ${destructive ? 'hover:border-red-500/20 hover:bg-red-500/5' : ''}
+            `}
+        >
+            <div className={`
+                w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+                ${destructive ? 'bg-red-500/10 text-red-400 group-hover:bg-red-500/20' : 'bg-primary/10 text-primary group-hover:bg-primary/20'}
+                transition-colors
+            `}>
+                <Icon size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                    <h3 className={`text-sm font-bold truncate ${destructive ? 'text-red-400' : 'text-white'}`}>{title}</h3>
+                    {badge && (
+                        <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/20">
+                            {badge}
+                        </span>
+                    )}
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{description}</p>
+            </div>
+            <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 ${destructive ? 'group-hover:text-red-400' : 'group-hover:text-white'}`} />
+        </div>
     );
 }

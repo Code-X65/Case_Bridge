@@ -14,13 +14,18 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    conditions: ['import', 'module', 'browser', 'default'],
   },
   optimizeDeps: {
     include: ['@emailjs/browser'],
+    esbuildOptions: {
+      mainFields: ['module', 'main'],
+    },
   },
   build: {
     commonjsOptions: {
       include: [/node_modules/],
+      transformMixedEsModules: true,
     },
   },
 })

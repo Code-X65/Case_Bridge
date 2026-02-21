@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShieldCheck, Building2, Users } from 'lucide-react';
+import { ShieldCheck, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface AuthNavbarProps {
@@ -67,13 +67,6 @@ export default function AuthNavbar({ variant = 'internal' }: AuthNavbarProps) {
                                         Register Firm
                                     </Link>
                                 )}
-                                <Link
-                                    to="/client/login"
-                                    className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2"
-                                >
-                                    <Users className="w-4 h-4" />
-                                    Client Portal
-                                </Link>
                             </>
                         ) : (
                             <>

@@ -1,11 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-    LayoutDashboard, Users, Building2, Briefcase,
+    LayoutDashboard, Users, Briefcase,
     Contact2, FileText, CreditCard, BarChart3,
     Settings, FileClock, Shield, Bell,
     User, LogOut, Calendar
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -13,6 +13,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 export default function InternalSidebar() {
     const navigate = useNavigate();
     const location = useLocation();
+    const queryClient = useQueryClient();
     const { session, clearSession } = useInternalSession();
 
     const isCaseManager = session?.role === 'case_manager';
@@ -30,9 +31,16 @@ export default function InternalSidebar() {
     });
 
     const handleLogout = async () => {
-        await clearSession.mutateAsync();
-        await supabase.auth.signOut();
-        navigate('/internal/login');
+        // Immediate UI feedback
+        queryClient.setQueryData(['internal_session'], null);
+        queryClient.setQueryData(['auth_session'], null);
+        queryClient.setQueryData(['profile_status'], null);
+
+        // Background cleanup
+        clearSession.mutate();
+        supabase.auth.signOut();
+
+        navigate('/internal/login', { replace: true });
     };
 
     const { unreadCount } = useNotifications();
@@ -97,7 +105,7 @@ export default function InternalSidebar() {
                         <NavItem label="Dashboard" path="/internal/dashboard" icon={LayoutDashboard} />
                         <NavItem label="Staff & Roles" path="/internal/staff" icon={Users} />
                         <NavItem label="Subscription Plans" path="/internal/subscription-plans" icon={CreditCard} />
-                        <NavItem label="Firm Profile" path="/internal/firm-profile" icon={Building2} />
+                        <NavItem label="Firm Settings" path="/internal/settings" icon={Settings} />
 
                         <NavItem label="Case Intake" path="/internal/intake" icon={FileText} />
                         <NavItem label="Case Management" path="/internal/matters" icon={Briefcase} />
@@ -110,9 +118,7 @@ export default function InternalSidebar() {
                         <NavItem label="Billing" path="/internal/billing" icon={CreditCard} />
 
                         <SectionHeader label="System" />
-                        <NavItem label="Settings" path="/internal/settings" icon={Settings} />
                         <NavItem label="Audit Logs" path="/internal/audit-logs" icon={Shield} />
-                        <NavItem label="Security & Access" path="/internal/security" icon={Shield} />
                         <NavItem label="Notifications" path="/internal/notifications" icon={Bell} badgeCount={unreadCount} />
                     </>
                 )}

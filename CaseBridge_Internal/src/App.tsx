@@ -10,19 +10,17 @@ import FirstLoginWelcome from './pages/auth/FirstLoginWelcome';
 import UnauthorizedPage from './pages/auth/UnauthorizedPage';
 import LockedAccountPage from './pages/auth/LockedAccountPage';
 import AcceptInvitePage from './pages/auth/AcceptInvitePage';
-import FirmProfilePage from './pages/internal/FirmProfilePage';
+import FirmSettingsPage from './pages/internal/FirmSettingsPage';
 import AuditLogsPage from './pages/internal/AuditLogsPage';
 import SubscriptionPlansPage from './pages/internal/SubscriptionPlansPage';
 import InternalLandingPage from './pages/internal/InternalLandingPage';
 import DashboardDispatcher from './pages/internal/DashboardDispatcher';
 import StaffManagementPage from './pages/internal/StaffManagementPage';
 import MatterManagementPage from './pages/internal/MatterManagementPage';
-import ComingSoonPage from './pages/internal/ComingSoonPage';
 import IntakeDashboard from './pages/internal/intake/IntakeDashboard';
 import IntakeReview from './pages/internal/intake/IntakeReview';
 import ClientBehaviorPage from './pages/internal/case-manager/ClientBehaviorPage';
 import ReportingDashboard from './pages/internal/ReportingDashboard';
-import FirmBillingPage from './pages/internal/FirmBillingPage';
 
 import MyMattersPage from './pages/internal/MyMattersPage';
 import MyTasksPage from './pages/internal/MyTasksPage';
@@ -103,13 +101,13 @@ function App() {
           <Route path="/internal/case-manager/tasks" element={<ProtectedRoute><MyTasksPage /></ProtectedRoute>} />
 
           {/* System Pages */}
-          <Route path="/internal/firm-profile" element={<ProtectedRoute><FirmProfilePage /></ProtectedRoute>} />
-          <Route path="/internal/billing" element={<ProtectedRoute><FirmBillingPage /></ProtectedRoute>} />
-          <Route path="/internal/settings" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/firm-profile" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} />
+          <Route path="/internal/billing" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} /> {/* Temporary redirect or common hub */}
+          <Route path="/internal/settings" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} />
           <Route path="/internal/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
           <Route path="/internal/audit-logs" element={<ProtectedRoute><AuditLogsPage /></ProtectedRoute>} />
           <Route path="/internal/subscription-plans" element={<ProtectedRoute><SubscriptionPlansPage /></ProtectedRoute>} />
-          <Route path="/internal/security" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
+          <Route path="/internal/security" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} />
           <Route path="/internal/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
           <Route path="/internal/matter/:id" element={<ProtectedRoute><MatterWorkspace /></ProtectedRoute>} />
         </Routes>

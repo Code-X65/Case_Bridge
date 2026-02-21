@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Loader2, ShieldCheck, Mail, Lock, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
@@ -21,83 +21,86 @@ const acceptInviteSchema = z.object({
 type AcceptInviteForm = z.infer<typeof acceptInviteSchema>;
 
 export default function AcceptInvitePage() {
-    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const token = searchParams.get('token');
     const [isSuccess, setIsSuccess] = useState(false);
     const [authError, setAuthError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    // Fetch Invite Details
-    const { data: invite, isLoading, error: inviteError } = useQuery({
-        queryKey: ['invite', token],
-        enabled: !!token,
-        queryFn: async () => {
-            // @ts-ignore - Supabase types might not have the RPC yet
-            const { data, error } = await supabase.rpc('get_invite_details', {
-                p_token: token
-            });
+    // 1. Listen for auth state changes and fetch session
+    const [session, setSession] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-            if (error) throw error;
-            // RPC returns an array of rows (even if it's one row), so we take the first
-            if (!data || data.length === 0) throw new Error('Invalid or expired invitation.');
-            return data[0] as { email: string; firm_name: string; role: string };
-        },
-        retry: false
+    useState(() => {
+        // Initial check
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            setIsLoading(false);
+            if (session) console.log('Found existing session on mount:', session.user.email);
+        });
+
+        // Listen for redirect login
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log('Auth State Change Event:', event, session?.user?.email);
+            if (session) {
+                setSession(session);
+                setIsLoading(false);
+            }
+        });
+
+        return () => subscription.unsubscribe();
     });
+
+    const user = session?.user;
+    const metadata = user?.user_metadata;
 
     // Form Setup
     const { register, handleSubmit, formState: { errors } } = useForm<AcceptInviteForm>({
         resolver: zodResolver(acceptInviteSchema)
     });
 
-    // Signup Mutation
-    const signUpMutation = useMutation({
+    // Password Update Mutation (Native Flow)
+    const updatePasswordMutation = useMutation({
         mutationFn: async (data: AcceptInviteForm) => {
-            if (!invite) return;
-
-            // 1. Sign Up (Trigger will handle role assignment)
-            const { error: signUpError } = await supabase.auth.signUp({
-                email: invite.email,
-                password: data.password,
-                options: {
-                    data: {
-                        // Pass metadata if needed, but the trigger relies on email
-                    }
-                }
+            const { error } = await supabase.auth.updateUser({
+                password: data.password
             });
-
-            if (signUpError) throw signUpError;
+            if (error) throw error;
             return true;
         },
         onSuccess: () => {
             setIsSuccess(true);
         },
         onError: (error: any) => {
-            setAuthError(error.message || 'Failed to create account.');
+            setAuthError(error.message || 'Failed to update password.');
         }
     });
 
-    if (!token) {
+    if (isLoading) { // Changed sessionLoading to isLoading
         return (
             <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 max-w-md w-full text-center">
-                    <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-2">Invalid Link</h2>
-                    <p className="text-slate-400 mb-6">This invitation link is missing a token.</p>
-                    <button onClick={() => navigate('/internal/login')} className="text-sm font-bold text-red-400 hover:text-red-300">
-                        Go to Login
-                    </button>
-                </div>
+                <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
             </div>
         );
     }
 
-    if (isLoading) {
+    if (!user) {
         return (
             <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
-                <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-8 max-w-md w-full text-center">
+                    <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-6" />
+                    <h2 className="text-2xl font-black text-white mb-4">Invalid or Expired Link</h2>
+                    <p className="text-slate-400 mb-8 leading-relaxed">
+                        This invitation link has either expired or is invalid.
+                        Please ask your administrator to send a new invitation.
+                    </p>
+                    <button
+                        onClick={() => navigate('/internal/login')}
+                        className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all border border-white/10"
+                    >
+                        Return to Login
+                    </button>
+                </div>
             </div>
         );
     }
@@ -107,20 +110,19 @@ export default function AcceptInvitePage() {
             <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
                 <div className="w-full max-w-md bg-[#1E293B] border border-white/10 rounded-2xl shadow-2xl overflow-hidden text-center p-10">
                     <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/30">
-                        <Mail className="w-10 h-10 text-green-400" />
+                        <ShieldCheck className="w-10 h-10 text-green-400" />
                     </div>
-                    <h2 className="text-2xl font-black text-white mb-4">Check your email</h2>
+                    <h2 className="text-2xl font-black text-white mb-4">Account Ready!</h2>
                     <p className="text-slate-400 mb-8 leading-relaxed">
-                        We've sent a verification link to <br />
-                        <strong className="text-white">{invite?.email}</strong>. <br /><br />
-                        Please click the link in the email to verify your account and complete your setup.
+                        Your password has been set successfully. <br />
+                        You can now access your dashboard.
                     </p>
                     <div className="space-y-4">
                         <button
                             onClick={() => navigate('/internal/login')}
-                            className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all border border-white/10"
+                            className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all"
                         >
-                            Return to Login
+                            Go to Dashboard
                         </button>
                     </div>
                 </div>
@@ -128,68 +130,43 @@ export default function AcceptInvitePage() {
         );
     }
 
-    if (inviteError || !invite) {
-        return (
-            <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 max-w-md w-full text-center">
-                    <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-2">Invitation Expired or Invalid</h2>
-                    <p className="text-slate-400 mb-6">
-                        {(inviteError as any)?.message || "We couldn't find a valid pending invitation for this link."}
-                    </p>
-                    <button onClick={() => navigate('/internal/login')} className="text-sm font-bold text-red-400 hover:text-red-300">
-                        Return to Login
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Background Effects */}
             <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-indigo-900/20 to-transparent pointer-events-none" />
 
             <div className="w-full max-w-md bg-[#1E293B] border border-white/10 rounded-2xl shadow-2xl relative z-10 overflow-hidden">
-                {/* Header */}
                 <div className="bg-indigo-600/10 border-b border-indigo-500/10 p-8 text-center">
                     <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-500/30">
                         <ShieldCheck className="w-8 h-8 text-indigo-400" />
                     </div>
-                    <h1 className="text-2xl font-black text-white mb-2">Join CaseBridge</h1>
+                    <h1 className="text-2xl font-black text-white mb-2">Complete Your Setup</h1>
                     <p className="text-indigo-200 text-sm">
                         You've been invited to join <br />
-                        <strong className="text-white text-lg block mt-1">{invite.firm_name}</strong>
+                        <strong className="text-white text-lg block mt-1">CaseBridge Legal Firm</strong>
                     </p>
                 </div>
 
                 <div className="p-8">
-                    <div className="mb-6 flex flex-col gap-2">
-                        <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
-                            <Mail className="w-4 h-4 text-slate-400" />
-                            <div>
-                                <p className="text-xs text-slate-500 font-bold uppercase">Email</p>
-                                <p className="text-sm text-slate-300 font-medium">{invite.email}</p>
-                            </div>
+                    <div className="mb-8 p-4 bg-slate-900/50 rounded-xl border border-white/5 space-y-3">
+                        <div className="flex items-center gap-3">
+                            <Mail className="w-4 h-4 text-indigo-400" />
+                            <p className="text-sm text-slate-300">{user.email}</p>
                         </div>
-                        <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 flex items-center gap-3">
-                            <ShieldCheck className="w-4 h-4 text-slate-400" />
-                            <div>
-                                <p className="text-xs text-slate-500 font-bold uppercase">Role</p>
-                                <p className="text-sm text-slate-300 font-medium capitalize">{invite.role.replace('_', ' ')}</p>
-                            </div>
+                        <div className="flex items-center gap-3">
+                            <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                            <p className="text-sm text-slate-300 capitalize">{metadata?.role?.replace('_', ' ') || 'Staff Member'}</p>
                         </div>
                     </div>
 
-                    <form onSubmit={handleSubmit((data) => signUpMutation.mutate(data))} className="space-y-4">
+                    <form onSubmit={handleSubmit((data) => updatePasswordMutation.mutate(data))} className="space-y-4">
                         <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Create Password</label>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Set Password</label>
                             <div className="relative">
                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     {...register('password')}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-12 text-white focus:border-indigo-500 outline-none transition-colors"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 pl-10 pr-12 text-white focus:border-indigo-500 outline-none transition-colors"
                                     placeholder="••••••••"
                                 />
                                 <button
@@ -210,7 +187,7 @@ export default function AcceptInvitePage() {
                                 <input
                                     type={showConfirmPassword ? "text" : "password"}
                                     {...register('confirmPassword')}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-12 text-white focus:border-indigo-500 outline-none transition-colors"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 pl-10 pr-12 text-white focus:border-indigo-500 outline-none transition-colors"
                                     placeholder="••••••••"
                                 />
                                 <button
@@ -225,21 +202,22 @@ export default function AcceptInvitePage() {
                         </div>
 
                         {authError && (
-                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+                            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 flex-shrink-0" />
                                 {authError}
                             </div>
                         )}
 
                         <button
                             type="submit"
-                            disabled={signUpMutation.isPending}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
+                            disabled={updatePasswordMutation.isPending}
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
                         >
-                            {signUpMutation.isPending ? (
+                            {updatePasswordMutation.isPending ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
                                 <>
-                                    Create Account <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    Finalize Account <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                 </>
                             )}
                         </button>

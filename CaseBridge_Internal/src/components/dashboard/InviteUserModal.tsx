@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Mail, X, Check, Copy } from 'lucide-react';
+import { Loader2, Mail, X, Check } from 'lucide-react';
 import { useInternalSession } from '@/hooks/useInternalSession';
-
-import { sendEmail } from '@/lib/emailjs';
 
 interface InviteUserModalProps {
     isOpen: boolean;
@@ -20,55 +18,43 @@ export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProp
     const [role, setRole] = useState<'case_manager' | 'associate_lawyer'>('associate_lawyer');
     const [generatedLink, setGeneratedLink] = useState<string | null>(null);
 
+    const [error, setError] = useState<string | null>(null);
+
     const inviteMutation = useMutation({
         mutationFn: async () => {
-            if (!session) throw new Error('No session');
+            setError(null);
+            if (!session) throw new Error('No valid internal session found. Please re-login.');
 
-            // Using send_branded_invite to match the restored SQL
-            const { data, error } = await supabase.rpc('send_branded_invite', {
+            const redirectTo = `${window.location.origin}/auth/accept-invite`;
+            console.log('Sending invitation with redirectTo:', redirectTo);
+
+            const { data, error: rpcError } = await supabase.rpc('secure_supabase_invite', {
                 p_email: email,
                 p_role: role,
                 p_firm_id: session.firm_id,
                 p_first_name: firstName,
                 p_last_name: lastName,
-                p_redirect_to: `${window.location.origin}/auth/accept-invite`
+                p_redirect_to: redirectTo
             });
 
-            if (error) throw error;
-            return data as string; // returns the full URL
-        },
-        onSuccess: async (result) => {
-            queryClient.invalidateQueries({ queryKey: ['firm_invitations'] });
-
-            if (result && result.startsWith('http')) {
-                setGeneratedLink(result);
-
-                // Automate EmailJS sending
-                try {
-                    if (!session?.firm_id) throw new Error('No firm ID in session');
-
-                    const { data: firmData } = await supabase.from('firms').select('name').eq('id', session.firm_id).single();
-                    await sendEmail(import.meta.env.VITE_EMAILJS_TEMPLATE_ID_STAFF_INVITE || 'internal_staff_invite', {
-                        to_email: email,
-                        staff_name: `${firstName} ${lastName}`,
-                        firm_name: firmData?.name || 'CaseBridge Firm',
-                        invite_link: result,
-                        role: role.replace('_', ' ')
-                    });
-                } catch (emailError) {
-                    console.error('Failed to send EmailJS invite:', emailError);
-                    alert('Link generated, but automatic email failed to send. Please share the link manually.');
-                }
+            if (rpcError) throw rpcError;
+            if (data?.success === false) {
+                console.error('Invitation RPC returned error:', data);
+                throw new Error(data.error || 'The invitation service returned an error. Please try again.');
             }
+
+            return data;
         },
+        onSuccess: async () => {
+            queryClient.invalidateQueries({ queryKey: ['firm_invitations'] });
+            setGeneratedLink('sent_via_supabase');
+        },
+        onError: (err: any) => {
+            console.error('Invite failed:', err);
+            setError(err.message || 'Failed to send invitation. Please check your connection or permissions.');
+        }
     });
 
-    const copyToClipboard = () => {
-        if (generatedLink) {
-            navigator.clipboard.writeText(generatedLink);
-            alert('Link copied to clipboard!');
-        }
-    };
 
     if (!isOpen) return null;
 
@@ -133,6 +119,12 @@ export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProp
                             </select>
                         </div>
 
+                        {error && (
+                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs text-center">
+                                {error}
+                            </div>
+                        )}
+
                         <button
                             type="submit"
                             disabled={inviteMutation.isPending}
@@ -153,24 +145,19 @@ export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProp
                     </form>
                 ) : (
                     <div className="text-center">
-                        <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
                             <Check className="w-8 h-8 text-green-400" />
                         </div>
-                        <h3 className="text-lg font-bold text-white mb-2">Invitation Created!</h3>
-                        <p className="text-sm text-slate-400 mb-6">Share this link with your colleague to join.</p>
-
-                        <div className="bg-slate-900 p-4 rounded-xl border border-white/10 flex items-center gap-3 mb-6">
-                            <code className="text-xs text-indigo-300 truncate flex-1 block text-left">
-                                {generatedLink}
-                            </code>
-                            <button onClick={copyToClipboard} className="text-slate-400 hover:text-white p-2">
-                                <Copy className="w-4 h-4" />
-                            </button>
-                        </div>
+                        <h3 className="text-2xl font-black text-white mb-2">Invitation Sent!</h3>
+                        <p className="text-sm text-slate-400 mb-8 leading-relaxed">
+                            Supabase has sent a secure invitation email to <br />
+                            <strong className="text-indigo-400">{email}</strong>. <br />
+                            The recipient can now join and verify their account.
+                        </p>
 
                         <button
                             onClick={onClose}
-                            className="w-full py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                            className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all"
                         >
                             Done
                         </button>

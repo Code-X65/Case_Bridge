@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { useInternalSession } from '@/hooks/useInternalSession';
 import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Users, Trash2, RefreshCw, Link as LinkIcon, BadgeCheck, Clock, User } from 'lucide-react';
+import { Plus, Users, Trash2, RefreshCw, Link as LinkIcon, BadgeCheck, Clock, User, MoreVertical, Edit2, ShieldOff, ShieldCheck as ShieldIcon } from 'lucide-react';
 import InviteUserModal from '@/components/dashboard/InviteUserModal';
+import EditStaffModal from '@/components/dashboard/EditStaffModal';
 import InternalSidebar from '@/components/layout/InternalSidebar';
 import type { UserRole, Invitation } from '@/types/internal';
-import { sendEmail } from '@/lib/emailjs';
 
 export default function StaffManagementPage() {
     const { session } = useInternalSession();
     const [isInviteOpen, setIsInviteOpen] = useState(false);
+    const [editingStaff, setEditingStaff] = useState<UserRole | null>(null);
+    const [actionMenuId, setActionMenuId] = useState<string | null>(null);
     const queryClient = useQueryClient();
 
     // Fetch Active Users
@@ -20,8 +22,9 @@ export default function StaffManagementPage() {
         queryFn: async () => {
             const { data } = await supabase
                 .from('user_firm_roles')
-                .select('*, profiles:user_id(full_name, email, onboarding_state)')
-                .eq('firm_id', session!.firm_id);
+                .select('id, user_id, status, role, profiles:user_id(id, full_name, email, onboarding_state, status)')
+                .eq('firm_id', session!.firm_id)
+                .neq('status', 'deleted');
             return (data as unknown as UserRole[]) || [];
         }
     });
@@ -54,42 +57,65 @@ export default function StaffManagementPage() {
 
     const resendInvite = useMutation({
         mutationFn: async (invite: Invitation) => {
-            // 1. RPC to regenerate token in DB
-            const { data: newLink, error } = await supabase.rpc('resend_secure_invitation', {
-                p_invite_id: invite.id,
+            const { data, error } = await supabase.rpc('secure_supabase_invite', {
+                p_email: invite.email,
+                p_role: invite.role_preassigned,
+                p_firm_id: session!.firm_id,
+                p_first_name: invite.first_name,
+                p_last_name: invite.last_name,
                 p_redirect_to: `${window.location.origin}/auth/accept-invite`
             });
+
             if (error) throw error;
+            if (data?.success === false) {
+                console.error('Resend failed:', data);
+                throw new Error(data.error || 'Failed to resend invitation');
+            }
 
-            // 2. Resend via EmailJS
-            const { data: firmData } = await supabase.from('firms').select('name').eq('id', session?.firm_id).single();
-            await sendEmail(import.meta.env.VITE_EMAILJS_TEMPLATE_ID_STAFF_INVITE || 'internal_staff_invite', {
-                to_email: invite.email,
-                staff_name: `${invite.first_name || ''} ${invite.last_name || ''}`.trim() || 'Team Member',
-                firm_name: firmData?.name || 'CaseBridge Firm',
-                invite_link: newLink,
-                role: invite.role_preassigned.replace('_', ' ')
-            });
-
-            return newLink;
+            return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['firm_invitations'] });
-            alert('Invitation renewed and email resent via EmailJS.');
+            alert('Invitation resent via Supabase.');
+        }
+    });
+
+    const toggleStaffStatus = useMutation({
+        mutationFn: async ({ userId, status }: { userId: string, status: string }) => {
+            console.log('Toggling staff status:', { userId, status, firmId: session?.firm_id });
+            const { data, error } = await supabase.rpc('set_staff_status', {
+                p_user_id: userId,
+                p_status: status,
+                p_firm_id: session?.firm_id
+            });
+            if (error) {
+                console.error('RPC Error (set_staff_status):', error);
+                throw error;
+            }
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['firm_users'] });
+            setActionMenuId(null);
+        },
+        onError: (error: any) => {
+            alert(`Failed up update status: ${error.message} (${error.code || 'No code'})`);
         }
     });
 
     const deleteStaff = useMutation({
         mutationFn: async (userId: string) => {
-            const { error } = await supabase.rpc('delete_staff_member', {
+            const { data, error } = await supabase.rpc('delete_staff_member_native', {
                 p_user_id: userId,
                 p_firm_id: session!.firm_id
             });
             if (error) throw error;
+            return data;
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['firm_users'] });
-            alert('Staff member removed.');
+            alert(data?.auth_deleted ? 'Staff member removed and account revoked.' : 'Staff member removed from firm.');
+            setActionMenuId(null);
         }
     });
 
@@ -135,29 +161,76 @@ export default function StaffManagementPage() {
                                                     <p className="text-xs text-slate-500 lowercase">{user.profiles?.email}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-4 relative">
+                                                <div className="flex items-center gap-2 mr-4 text-right">
                                                     <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${user.role === 'admin_manager' ? 'bg-purple-500/20 text-purple-400' :
                                                         user.role === 'case_manager' ? 'bg-blue-500/20 text-blue-400' :
                                                             'bg-slate-500/20 text-slate-400'
                                                         }`}>
                                                         {user.role.replace('_', ' ')}
                                                     </span>
-                                                    <BadgeCheck className="w-5 h-5 text-green-400" />
+                                                    {user.profiles?.status === 'suspended' ? (
+                                                        <span className="px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded text-[10px] font-bold uppercase tracking-widest border border-yellow-500/20">Suspended</span>
+                                                    ) : (
+                                                        <BadgeCheck className="w-5 h-5 text-green-400" />
+                                                    )}
                                                 </div>
-                                                {user.role !== 'admin_manager' && (
+
+                                                <div className="relative">
                                                     <button
-                                                        onClick={() => {
-                                                            if (confirm('Delete this staff member and all their permissions?')) {
-                                                                deleteStaff.mutate(user.id);
-                                                            }
-                                                        }}
-                                                        className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ms-4"
-                                                        title="Delete Staff"
+                                                        onClick={() => setActionMenuId(actionMenuId === user.id ? null : user.id)}
+                                                        className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
                                                     >
-                                                        <Trash2 className="w-4 h-4" />
+                                                        <MoreVertical className="w-5 h-5" />
                                                     </button>
-                                                )}
+
+                                                    {actionMenuId === user.id && (
+                                                        <div className="absolute right-0 mt-2 w-52 bg-[#1e293b] border border-white/10 rounded-xl shadow-2xl z-[100] overflow-hidden py-1 animate-in fade-in zoom-in duration-150">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingStaff(user);
+                                                                    setActionMenuId(null);
+                                                                }}
+                                                                className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white text-left transition-colors"
+                                                            >
+                                                                <Edit2 className="w-4 h-4" /> Edit Details
+                                                            </button>
+
+                                                            {user.profiles?.status === 'suspended' ? (
+                                                                <button
+                                                                    onClick={() => toggleStaffStatus.mutate({ userId: user.user_id, status: 'active' })}
+                                                                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-green-400 hover:bg-green-500/10 text-left transition-colors font-medium border-y border-white/5"
+                                                                >
+                                                                    <ShieldIcon className="w-4 h-4" /> Reactivate Access
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    disabled={user.role === 'admin_manager'}
+                                                                    onClick={() => {
+                                                                        if (confirm('Suspend this staff member? They will lose dashboard access immediately.')) {
+                                                                            toggleStaffStatus.mutate({ userId: user.user_id, status: 'suspended' });
+                                                                        }
+                                                                    }}
+                                                                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-yellow-400 hover:bg-yellow-500/10 text-left transition-colors font-medium border-y border-white/5 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                                >
+                                                                    <ShieldOff className="w-4 h-4" /> Suspend Access
+                                                                </button>
+                                                            )}
+
+                                                            <button
+                                                                disabled={user.role === 'admin_manager'}
+                                                                onClick={() => {
+                                                                    if (confirm('Permanently remove this staff member? This will revoke their account but keep their historical records.')) {
+                                                                        deleteStaff.mutate(user.user_id);
+                                                                    }
+                                                                }}
+                                                                className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 text-left transition-colors font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" /> Remove Firm
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -228,6 +301,12 @@ export default function StaffManagementPage() {
             <InviteUserModal
                 isOpen={isInviteOpen}
                 onClose={() => setIsInviteOpen(false)}
+            />
+
+            <EditStaffModal
+                isOpen={!!editingStaff}
+                onClose={() => setEditingStaff(null)}
+                staffMember={editingStaff}
             />
         </div>
     );

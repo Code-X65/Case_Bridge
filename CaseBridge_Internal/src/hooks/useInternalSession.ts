@@ -47,8 +47,9 @@ export function useInternalSession() {
 
             return null;
         },
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        gcTime: 1000 * 60 * 60, // 1 hour
+        staleTime: 0, // Always check for fresh session data (live role updates)
+        refetchOnWindowFocus: true,
+        gcTime: 1000 * 60 * 30, // 30 minutes
     });
 
     const createSession = useMutation({

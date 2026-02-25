@@ -9,7 +9,6 @@ import {
     Mail,
     Lock,
     Phone,
-    MapPin,
     ArrowLeft,
     ArrowRight,
     Loader2,
@@ -19,6 +18,7 @@ import {
     EyeOff
 } from 'lucide-react';
 import AuthNavbar from '@/components/layout/AuthNavbar';
+import { NIGERIA_STATES, LGAS_BY_STATE, type NigeriaState } from '@/utils/nigeria-data';
 
 const MIN_PASSWORD_LENGTH = 10;
 const MAX_RETRIES = 3;
@@ -61,15 +61,18 @@ export default function RegisterFirmPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [personalPhone, setPersonalPhone] = useState('');
+    const [personalPhone, setPersonalPhone] = useState('+234');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Firm info
     const [firmName, setFirmName] = useState('');
     const [firmEmail, setFirmEmail] = useState('');
-    const [firmPhone, setFirmPhone] = useState('');
-    const [firmAddress, setFirmAddress] = useState('');
+    const [firmPhone, setFirmPhone] = useState('+234');
+    const [firmState, setFirmState] = useState<NigeriaState | ''>('');
+    const [firmLga, setFirmLga] = useState('');
+    const [firmCity, setFirmCity] = useState('');
+    const [firmStreet, setFirmStreet] = useState('');
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [resendStatus, setResendStatus] = useState<string | null>(null);
 
@@ -106,6 +109,11 @@ export default function RegisterFirmPage() {
 
         if (password !== confirmPassword) {
             setError('Passwords do not match');
+            return;
+        }
+
+        if (!personalPhone || personalPhone === '+234') {
+            setError('Phone number is required');
             return;
         }
 
@@ -187,6 +195,26 @@ export default function RegisterFirmPage() {
         setLoading(true);
         setError(null);
 
+        if (!firmEmail) {
+            setError('Firm email is required');
+            setLoading(false);
+            return;
+        }
+
+        if (!firmPhone || firmPhone === '+234') {
+            setError('Firm phone number is required');
+            setLoading(false);
+            return;
+        }
+
+        if (!firmState || !firmLga || !firmCity || !firmStreet) {
+            setError('All address fields (State, LGA, City, and Street) are required');
+            setLoading(false);
+            return;
+        }
+
+        const fullAddress = `${firmStreet}, ${firmCity}, ${firmLga}, ${firmState} State, Nigeria`;
+
         try {
             // STEP 1: Create Supabase auth user with email confirmation
             const { data: authData, error: signUpError } = await supabase.auth.signUp({
@@ -228,9 +256,9 @@ export default function RegisterFirmPage() {
                     .insert({
                         user_id: userId,
                         firm_name: firmName,
-                        firm_email: firmEmail || email,
+                        firm_email: firmEmail,
                         firm_phone: firmPhone,
-                        firm_address: firmAddress,
+                        firm_address: fullAddress,
                         user_first_name: firstName,
                         user_last_name: lastName,
                         user_phone: personalPhone,
@@ -391,7 +419,7 @@ export default function RegisterFirmPage() {
 
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                                        Phone (Optional)
+                                        Personal Phone *
                                     </label>
                                     <div className="relative">
                                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
@@ -399,8 +427,9 @@ export default function RegisterFirmPage() {
                                             type="tel"
                                             value={personalPhone}
                                             onChange={(e) => setPersonalPhone(e.target.value)}
+                                            required
                                             className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
-                                            placeholder="+1 (555) 000-0000"
+                                            placeholder="+234..."
                                         />
                                     </div>
                                 </div>
@@ -528,7 +557,7 @@ export default function RegisterFirmPage() {
 
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                                        Firm Email
+                                        Firm Email *
                                     </label>
                                     <div className="relative">
                                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
@@ -536,16 +565,16 @@ export default function RegisterFirmPage() {
                                             type="email"
                                             value={firmEmail}
                                             onChange={(e) => setFirmEmail(e.target.value)}
+                                            required
                                             className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
                                             placeholder="contact@lawfirm.com"
                                         />
                                     </div>
-                                    <p className="text-xs text-slate-500 mt-1.5">Leave blank to use your email</p>
                                 </div>
 
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                                        Firm Phone
+                                        Firm Phone *
                                     </label>
                                     <div className="relative">
                                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
@@ -553,24 +582,79 @@ export default function RegisterFirmPage() {
                                             type="tel"
                                             value={firmPhone}
                                             onChange={(e) => setFirmPhone(e.target.value)}
+                                            required
                                             className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
-                                            placeholder="+1 (555) 987-6543"
+                                            placeholder="+234..."
                                         />
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                                        Firm Address (Optional)
-                                    </label>
-                                    <div className="relative">
-                                        <MapPin className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
-                                        <textarea
-                                            value={firmAddress}
-                                            onChange={(e) => setFirmAddress(e.target.value)}
-                                            rows={3}
-                                            className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none resize-none"
-                                            placeholder="123 Legal Street, Suite 100, New York, NY 10001"
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                                            State *
+                                        </label>
+                                        <select
+                                            value={firmState}
+                                            onChange={(e) => {
+                                                setFirmState(e.target.value as NigeriaState);
+                                                setFirmLga('');
+                                            }}
+                                            required
+                                            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none appearance-none"
+                                        >
+                                            <option value="" disabled className="bg-[#0F172A]">Select State</option>
+                                            {NIGERIA_STATES.map(state => (
+                                                <option key={state} value={state} className="bg-[#0F172A]">{state}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                                            LGA *
+                                        </label>
+                                        <select
+                                            value={firmLga}
+                                            onChange={(e) => setFirmLga(e.target.value)}
+                                            required
+                                            disabled={!firmState}
+                                            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none appearance-none disabled:opacity-50"
+                                        >
+                                            <option value="" disabled className="bg-[#0F172A]">Select LGA</option>
+                                            {firmState && LGAS_BY_STATE[firmState as NigeriaState].map(lga => (
+                                                <option key={lga} value={lga} className="bg-[#0F172A]">{lga}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                                            City *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={firmCity}
+                                            onChange={(e) => setFirmCity(e.target.value)}
+                                            required
+                                            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
+                                            placeholder="Ikeja"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                                            Street Address *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={firmStreet}
+                                            onChange={(e) => setFirmStreet(e.target.value)}
+                                            required
+                                            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
+                                            placeholder="123 Law Lane"
                                         />
                                     </div>
                                 </div>

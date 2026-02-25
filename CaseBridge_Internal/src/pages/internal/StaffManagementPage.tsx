@@ -244,14 +244,14 @@ export default function StaffManagementPage() {
                     <section>
                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <Clock className="w-4 h-4" />
-                            Pending Invitations ({invites?.length || 0})
+                            Pending Invitations ({(invites?.filter(i => !users?.some(u => u.profiles?.email === i.email)).length) || 0})
                         </h3>
                         <div className="bg-[#1E293B] border border-white/10 rounded-2xl p-6 border-l-4 border-l-yellow-500/30">
                             {invitesLoading ? (
                                 <p className="text-slate-500">Loading invites...</p>
                             ) : (
                                 <div className="grid gap-4">
-                                    {invites?.map((invite) => (
+                                    {invites?.filter(invite => !users?.some(user => user.profiles?.email === invite.email)).map((invite) => (
                                         <div key={invite.id} className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center justify-between">
                                             <div>
                                                 <p className="font-bold text-white">{invite.email}</p>
@@ -290,7 +290,7 @@ export default function StaffManagementPage() {
                                             </div>
                                         </div>
                                     ))}
-                                    {invites?.length === 0 && <p className="text-slate-500 text-sm italic">No pending invitations.</p>}
+                                    {(!invites || invites.filter(i => !users?.some(u => u.profiles?.email === i.email)).length === 0) && <p className="text-slate-500 text-sm italic">No pending invitations.</p>}
                                 </div>
                             )}
                         </div>

@@ -31,15 +31,30 @@ export default function ReportingDashboard() {
         }
     });
 
-    // 2. Fetch Staff Performance Metrics
+    // 2. Fetch Staff Performance Metrics (Enhanced)
     const { data: staffPerformance } = useQuery({
         queryKey: ['staff_performance', session?.firm_id],
         enabled: !!session?.firm_id,
         queryFn: async () => {
             const { data, error } = await supabase
-                .from('staff_performance_report')
+                .from('staff_workload_metrics')
                 .select('*')
                 .eq('firm_id', session!.firm_id);
+            if (error) throw error;
+            return data;
+        }
+    });
+
+    // 3. Fetch Stagnancy Risks
+    const { data: stagnancyRisks } = useQuery({
+        queryKey: ['stagnancy_risks', session?.firm_id],
+        enabled: !!session?.firm_id,
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('stagnancy_risk_report')
+                .select('*')
+                .eq('firm_id', session!.firm_id)
+                .limit(5);
             if (error) throw error;
             return data;
         }
@@ -114,6 +129,29 @@ export default function ReportingDashboard() {
                         />
                     </div>
 
+                    {/* Stagnancy Risk Alerts */}
+                    {stagnancyRisks && stagnancyRisks.length > 0 && (
+                        <div className="mb-12">
+                            <h3 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
+                                <AlertCircle size={14} /> Critical Stagnancy Risks (SLA Breach)
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {stagnancyRisks.map(risk => (
+                                    <div key={risk.matter_id} className="bg-rose-500/5 border border-rose-500/20 rounded-2xl p-4 flex items-center justify-between group hover:bg-rose-500/10 transition-all">
+                                        <div>
+                                            <p className="text-sm font-bold text-white truncate max-w-[180px] text-left">{risk.title}</p>
+                                            <p className="text-[10px] text-rose-400 font-black uppercase mt-1 text-left">{risk.current_stage} • {risk.associate_name || 'Unassigned'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xl font-black text-rose-500 italic">{risk.days_stagnant}d</p>
+                                            <p className="text-[8px] text-slate-500 font-bold uppercase">Stagnant</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Staff Workload Leaderboard */}
                     <div className="bg-[#1E293B]/30 border border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-md">
                         <div className="p-8 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -143,8 +181,7 @@ export default function ReportingDashboard() {
                                     <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-white/[0.02]">
                                         <th className="px-8 py-5">Associate Identity</th>
                                         <th className="px-8 py-5">Active Workload</th>
-                                        <th className="px-8 py-5">Historical Close</th>
-                                        <th className="px-8 py-5">SLA Speed</th>
+                                        <th className="px-8 py-5">Life-time Resolve</th>
                                         <th className="px-8 py-5 text-right">Performance Rank</th>
                                     </tr>
                                 </thead>
@@ -175,16 +212,8 @@ export default function ReportingDashboard() {
                                             </td>
                                             <td className="px-8 py-6">
                                                 <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase border border-emerald-500/20">
-                                                    {staff.closed_matters} Resolved
+                                                    {staff.closed_matters_total} Responded
                                                 </span>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <div className="flex items-center gap-2">
-                                                    <Clock size={12} className="text-slate-500" />
-                                                    <span className="text-sm font-bold text-slate-200">
-                                                        {staff.avg_resolution_days ? `${staff.avg_resolution_days.toFixed(1)}d` : 'N/A'}
-                                                    </span>
-                                                </div>
                                             </td>
                                             <td className="px-8 py-6 text-right">
                                                 <div className="inline-flex items-center gap-2 text-indigo-400 font-black text-xs uppercase italic group-hover:translate-x-1 transition-transform cursor-pointer">

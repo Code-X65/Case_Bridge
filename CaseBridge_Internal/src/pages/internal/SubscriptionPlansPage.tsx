@@ -8,6 +8,8 @@ import {
     Edit3, Shield
 } from 'lucide-react';
 import InternalLayout from '@/components/layout/InternalLayout';
+import { useToast } from '@/components/common/ToastService';
+import Skeleton from '@/components/ui/Skeleton';
 
 interface PlanFeature {
     text: string;
@@ -28,6 +30,7 @@ const TIERS = ['Basic', 'Standard', 'Premium'];
 export default function SubscriptionPlansPage() {
     const { session } = useInternalSession();
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     const [selectedTier, setSelectedTier] = useState<string>('Basic');
 
     // Form state for editing
@@ -103,9 +106,9 @@ export default function SubscriptionPlansPage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subscription_plans'] });
-            alert(`${selectedTier} plan updated successfully.`);
+            toast(`${selectedTier} plan updated successfully.`, 'success');
         },
-        onError: (err: any) => alert(err.message)
+        onError: (err: any) => toast(err.message, 'error')
     });
 
     const addFeature = () => {
@@ -124,7 +127,25 @@ export default function SubscriptionPlansPage() {
         }));
     };
 
-    if (isLoading) return <div className="min-h-screen bg-[#0F172A] flex items-center justify-center"><Loader2 className="animate-spin text-indigo-500" /></div>;
+    if (isLoading) return (
+        <InternalLayout>
+            <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+                <div className="mb-12">
+                    <Skeleton className="h-10 w-64 mb-2" />
+                    <Skeleton className="h-6 w-96" />
+                </div>
+                <Skeleton className="h-12 w-96 mb-10" />
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                    <div className="lg:col-span-5 space-y-8">
+                        <Skeleton className="h-[500px] w-full" />
+                    </div>
+                    <div className="lg:col-span-7 space-y-8">
+                        <Skeleton className="h-[500px] w-full" />
+                    </div>
+                </div>
+            </div>
+        </InternalLayout>
+    );
 
     return (
         <InternalLayout>

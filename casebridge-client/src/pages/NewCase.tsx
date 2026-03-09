@@ -5,13 +5,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
     FileText, Upload,
     Loader2, ShieldCheck, CreditCard, X, Clock, ArrowRight,
-    AlertCircle, Check, Shield, Building2
+    AlertCircle, Check, Shield, Building2, ChevronRight, ChevronLeft
 } from 'lucide-react';
 import { usePaystackPayment } from 'react-paystack';
 
 const steps = [
     { title: 'Introduction', icon: ShieldCheck },
-    { title: 'Case Details', icon: FileText },
+    { title: 'Details', icon: FileText },
     { title: 'Documents', icon: Upload },
     { title: 'Payment', icon: CreditCard },
 ];
@@ -25,8 +25,6 @@ export default function NewCase() {
     const [step, setStep] = useState(0);
     const [loading, setLoading] = useState(false);
     const [activePlans, setActivePlans] = useState<any[]>([]);
-    // Invoice State:
-    // If we have an invoice (from URL or created inline), we store it here.
     const [invoice, setInvoice] = useState<any>(null);
     const [files, setFiles] = useState<File[]>([]);
     const [vaultDocs, setVaultDocs] = useState<any[]>([]);
@@ -39,6 +37,7 @@ export default function NewCase() {
         title: '',
         description: '',
         jurisdiction: '',
+        adverse_parties: '',
         preferredFirmId: ''
     });
 
@@ -96,7 +95,6 @@ export default function NewCase() {
         const { data } = await supabase.from('firms').select('id, name').eq('status', 'active');
         if (data) {
             setFirms(data);
-            // AUTO-SELECT if ONLY ONE firm exists (System restriction)
             if (data.length === 1) {
                 setFormData(prev => ({ ...prev, preferredFirmId: data[0].id }));
             }
@@ -109,7 +107,6 @@ export default function NewCase() {
         }
 
         if (step === 2) { // Just moved from Details to Documents
-            // Fetch Vault Docs if not already fetched
             if (user && vaultDocs.length === 0) {
                 const { data } = await supabase
                     .from('client_documents')
@@ -121,10 +118,12 @@ export default function NewCase() {
         }
 
         setStep(prev => prev + 1);
+        window.scrollTo(0, 0);
     };
 
     const handleBack = () => {
         setStep(prev => prev - 1);
+        window.scrollTo(0, 0);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,19 +144,16 @@ export default function NewCase() {
         );
     };
 
-    // --- PAYMENT & SUBMISSION LOGIC ---
-
     const handleCreateInvoice = async (plan: any) => {
         setLoading(true);
         try {
-            // Create Invoice
             const { data: inv, error } = await supabase
                 .from('invoices')
                 .insert({
                     client_id: user?.id,
                     firm_id: formData.preferredFirmId,
                     invoice_number: `INV-${Date.now()}`,
-                    plan_type: plan.name, // Use plan name or ID? Let's use name as it's more human-readable in legacy fields
+                    plan_type: plan.name,
                     amount: plan.price,
                     status: 'draft'
                 })
@@ -174,7 +170,6 @@ export default function NewCase() {
         }
     };
 
-    // Paystack Configuration Helper
     const getPaystackConfig = () => ({
         reference: (new Date()).getTime().toString(),
         email: user?.email || 'user@example.com',
@@ -183,7 +178,6 @@ export default function NewCase() {
         currency: 'NGN',
     });
 
-    // We instantiate hook manually when needed (button click)
     const initializePayment = usePaystackPayment(getPaystackConfig());
 
     const handlePaymentSuccess = async (reference: any) => {
@@ -191,7 +185,6 @@ export default function NewCase() {
         console.log("Paystack Success:", reference);
 
         try {
-            // 1. Confirm Invoice Payment
             const { error: payError } = await supabase.rpc('confirm_invoice_payment', {
                 p_invoice_id: invoice.id,
                 p_reference: reference.reference,
@@ -199,8 +192,6 @@ export default function NewCase() {
             });
 
             if (payError) throw payError;
-
-            // 2. IMMEDIATE CASE SUBMISSION
             await submitCase(invoice.id, invoice.plan_type);
 
         } catch (err: any) {
@@ -218,7 +209,6 @@ export default function NewCase() {
         });
     };
 
-    // REFACTORED SUBMISSION FUNCTION
     const submitCase = async (verifiedInvoiceId: string, planType: string) => {
         try {
             const { data: caseData, error: caseError } = await supabase
@@ -229,6 +219,7 @@ export default function NewCase() {
                     title: formData.title,
                     description: formData.description,
                     jurisdiction: formData.jurisdiction,
+                    adverse_parties: formData.adverse_parties,
                     preferred_firm_id: formData.preferredFirmId || null,
                     status: 'submitted',
                     invoice_id: verifiedInvoiceId,
@@ -239,7 +230,6 @@ export default function NewCase() {
 
             if (caseError) throw caseError;
 
-            // 3. Upload New Documents
             if (files.length > 0) {
                 for (const file of files) {
                     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -263,14 +253,13 @@ export default function NewCase() {
                 }
             }
 
-            // 4. Link Vault Documents
             if (selectedVaultDocs.length > 0) {
                 for (const doc of selectedVaultDocs) {
                     await supabase.from('case_report_documents').insert({
                         case_report_id: caseData.id,
                         firm_id: formData.preferredFirmId,
                         file_name: doc.file_name,
-                        file_path: doc.file_url, // In client_documents, file_url is the path
+                        file_path: doc.file_url,
                         file_type: 'vault_link',
                         file_size: doc.file_size,
                         is_client_visible: true
@@ -278,13 +267,10 @@ export default function NewCase() {
                 }
             }
 
-            // SUCCESS -> Redirect
             navigate('/cases');
 
         } catch (err: any) {
             console.error("Submission Error", err);
-            // Critical failure after payment? Ideally shouldn't happen.
-            // If it does, user has a paid invoice and can retry?
             alert("Case creation failed: " + err.message);
             setProcessingPayment(false);
         }
@@ -292,94 +278,151 @@ export default function NewCase() {
 
     const renderStep = () => {
         switch (step) {
-            // PHASE 1: INTRO
             case 0: return (
-                <div className="step-content glass-card max-w-2xl mx-auto text-center py-8 sm:py-12 px-5 sm:px-8">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-400">
-                        <ShieldCheck size={32} className="sm:w-10 sm:h-10" />
+                <div className="bg-card border border-border shadow-neumorph rounded-[2rem] max-w-2xl mx-auto text-center p-8 sm:p-12 animate-fade-in relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -z-10 pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
+                    <div className="w-20 h-20 bg-input border border-border rounded-full flex items-center justify-center mx-auto mb-8 text-primary shadow-sm relative z-10">
+                        <ShieldCheck size={36} />
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-bold mb-4">Report a New Case</h2>
-                    <p className="text-muted-foreground leading-relaxed mb-8 max-w-lg mx-auto text-sm sm:text-base">
+                    <h2 className="text-2xl sm:text-3xl font-black mb-4 text-foreground tracking-tight z-10 relative">Report a New Case</h2>
+                    <p className="text-muted-foreground leading-relaxed mb-10 max-w-lg mx-auto text-sm sm:text-base z-10 relative">
                         This secure intake form allows you to submit case details to CaseBridge.
-                        You will be asked to select an intake priority plan and make a payment before final submission.
+                        You will be asked to provide details, attach documents, and select an intake priority plan.
                     </p>
-                    <button onClick={handleNext} className="btn btn-primary w-full sm:w-fit sm:px-8">Start Case Report</button>
+                    <button onClick={handleNext} className="w-full sm:w-auto px-8 py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-[var(--radius-neumorph)] shadow-[0_0_15px_rgba(201,162,77,0.3)] hover:shadow-[0_0_20px_rgba(201,162,77,0.4)] transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-wider mx-auto active:scale-95 group z-10 relative">
+                        Start Intake Process
+                        <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                    </button>
                 </div>
             );
 
-            // PHASE 2: DETAILS
             case 1: return (
-                <div className="step-content glass-card max-w-2xl mx-auto p-5 sm:p-8">
-                    <h2 className="text-lg sm:text-xl font-bold mb-6">Case Details</h2>
-                    <div className="space-y-4 sm:space-y-6">
+                <div className="bg-card border border-border shadow-neumorph rounded-[2rem] max-w-2xl mx-auto p-6 sm:p-10 animate-fade-in">
+                    <h2 className="text-xl sm:text-2xl font-black mb-8 text-foreground tracking-tight">Case Details</h2>
+                    <div className="space-y-6">
                         <div>
-                            <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Case Category *</label>
-                            <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} required className="w-full">
-                                <option value="">Select a category...</option>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block ml-1">Case Category *</label>
+                            <select
+                                value={formData.category}
+                                onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                required
+                                className="w-full bg-input border border-border rounded-xl py-3.5 px-4 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner"
+                            >
+                                <option value="" disabled>Select a category...</option>
                                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Case Title *</label>
-                            <input type="text" placeholder="e.g. Contract Dispute" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} required className="w-full" />
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block ml-1">Case Title *</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Contract Dispute with Vendor"
+                                value={formData.title}
+                                onChange={e => setFormData({ ...formData, title: e.target.value })}
+                                required
+                                className="w-full bg-input border border-border rounded-xl py-3.5 px-4 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner"
+                            />
                         </div>
                         <div>
-                            <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Description *</label>
-                            <textarea rows={6} placeholder="Describe the situation..." value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} required className="w-full" />
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block ml-1">Description *</label>
+                            <textarea
+                                rows={6}
+                                placeholder="Describe the situation in detail..."
+                                value={formData.description}
+                                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                required
+                                className="w-full bg-input border border-border rounded-xl py-4 px-4 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner resize-none"
+                            />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
-                                <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Jurisdiction (Optional)</label>
-                                <input type="text" value={formData.jurisdiction} onChange={e => setFormData({ ...formData, jurisdiction: e.target.value })} className="w-full" />
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block ml-1">Adverse Parties (Opponent)</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. John Doe, ABC Corp"
+                                    value={formData.adverse_parties}
+                                    onChange={e => setFormData({ ...formData, adverse_parties: e.target.value })}
+                                    className="w-full bg-input border border-border rounded-xl py-3.5 px-4 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner"
+                                />
                             </div>
                             <div>
-                                <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Managing Firm</label>
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block ml-1">Jurisdiction (Optional)</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Lagos, Nigeria"
+                                    value={formData.jurisdiction}
+                                    onChange={e => setFormData({ ...formData, jurisdiction: e.target.value })}
+                                    className="w-full bg-input border border-border rounded-xl py-3.5 px-4 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div>
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block ml-1">Managing Firm</label>
                                 {firms.length === 1 ? (
-                                    <div className="w-full bg-blue-500/10 border border-blue-500/20 rounded-xl py-3 px-4 text-white flex items-center gap-2">
-                                        <Building2 className="w-4 h-4 text-blue-400" />
-                                        <span className="font-bold">{firms[0].name}</span>
-                                        <span className="text-[10px] bg-blue-500/20 px-2 py-0.5 rounded text-blue-300 uppercase ml-auto">Selected</span>
+                                    <div className="w-full bg-primary/10 border border-primary/20 rounded-xl py-3.5 px-4 text-foreground flex items-center gap-3 shadow-sm">
+                                        <Building2 className="w-4 h-4 text-primary" />
+                                        <span className="font-bold text-sm truncate">{firms[0].name}</span>
+                                        <span className="text-[9px] bg-primary/20 px-2 py-0.5 rounded text-primary font-bold uppercase ml-auto shrink-0 border border-primary/20">Selected</span>
                                     </div>
                                 ) : (
-                                    <select value={formData.preferredFirmId} onChange={e => setFormData({ ...formData, preferredFirmId: e.target.value })} className="w-full">
-                                        <option value="">Select a firm...</option>
+                                    <select
+                                        value={formData.preferredFirmId}
+                                        onChange={e => setFormData({ ...formData, preferredFirmId: e.target.value })}
+                                        className="w-full bg-input border border-border rounded-xl py-3.5 px-4 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner"
+                                    >
+                                        <option value="" disabled>Select a firm...</option>
                                         {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                                     </select>
                                 )}
                             </div>
                         </div>
                     </div>
-                    <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 mt-8 pt-6 border-t border-white/10">
-                        <button onClick={handleBack} className="btn btn-secondary w-full sm:w-fit">Back</button>
-                        <button onClick={handleNext} disabled={!formData.title || !formData.description || !formData.category} className="btn btn-primary w-full sm:w-fit">Next: Documents</button>
+                    <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 mt-8 pt-6 border-t border-border">
+                        <button onClick={handleBack} className="w-full sm:w-auto px-6 py-3.5 bg-input hover:bg-card border border-border text-foreground rounded-[var(--radius-neumorph)] text-xs font-bold uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2">
+                            <ChevronLeft size={16} /> Back
+                        </button>
+                        <button
+                            onClick={handleNext}
+                            disabled={!formData.title || !formData.description || !formData.category}
+                            className="w-full sm:w-auto px-8 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-[var(--radius-neumorph)] shadow-[0_0_15px_rgba(201,162,77,0.3)] disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider active:scale-95 group"
+                        >
+                            Next: Documents <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                        </button>
                     </div>
                 </div>
             );
 
-            // PHASE 3: DOCUMENTS
             case 2: return (
-                <div className="step-content glass-card max-w-4xl mx-auto p-5 sm:p-8">
-                    <h2 className="text-lg sm:text-xl font-bold mb-2">Supporting Documents</h2>
-                    <p className="text-muted-foreground mb-8 text-sm sm:text-base">Upload new files or select from your secure vault.</p>
+                <div className="bg-card border border-border shadow-neumorph rounded-[2rem] max-w-4xl mx-auto p-6 sm:p-10 animate-fade-in">
+                    <h2 className="text-xl sm:text-2xl font-black mb-2 text-foreground tracking-tight">Supporting Documents</h2>
+                    <p className="text-muted-foreground mb-8 text-sm">Upload new files or quickly attach documents from your secure vault.</p>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
                         {/* New Uploads */}
                         <div>
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Upload New</h3>
-                            <div className="border-2 border-dashed border-white/10 rounded-2xl p-6 sm:p-10 bg-white/5 mb-6 text-center">
-                                <Upload size={28} className="mx-auto mb-4 text-slate-700" />
+                            <div className="flex items-center gap-2 mb-4">
+                                <Upload size={16} className="text-primary" />
+                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Upload New</h3>
+                            </div>
+                            <div className="border border-dashed border-border rounded-2xl p-8 bg-input/50 mb-6 text-center shadow-inner hover:border-primary/50 transition-colors">
+                                <Upload size={32} className="mx-auto mb-4 text-muted-foreground/60" />
                                 <input type="file" multiple onChange={handleFileChange} className="hidden" id="file-upload" />
-                                <label htmlFor="file-upload" className="cursor-pointer btn btn-secondary w-full sm:w-fit mb-3">Choose Files</label>
+                                <label htmlFor="file-upload" className="cursor-pointer inline-flex items-center justify-center px-6 py-3 bg-card border border-border text-foreground rounded-[var(--radius-neumorph)] text-xs font-bold uppercase tracking-wider hover:border-primary/50 hover:text-primary transition-all shadow-sm">
+                                    Browse Files
+                                </label>
                             </div>
                             {files.length > 0 && (
-                                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-2 no-scrollbar">
                                     {files.map((f, i) => (
-                                        <div key={i} className="flex justify-between items-center text-xs bg-white/5 p-3 rounded-xl border border-white/5">
+                                        <div key={i} className="flex justify-between items-center bg-card border border-border p-3.5 rounded-xl shadow-sm">
                                             <div className="flex items-center gap-3 min-w-0">
-                                                <FileText size={14} className="text-blue-400 shrink-0" />
-                                                <span className="truncate">{f.name}</span>
+                                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                                    <FileText size={14} />
+                                                </div>
+                                                <span className="truncate text-sm font-bold text-foreground pr-4">{f.name}</span>
                                             </div>
-                                            <button onClick={() => removeFile(i)} className="text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg transition-colors">
+                                            <button onClick={() => removeFile(i)} className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-white rounded-lg transition-colors border border-transparent hover:border-destructive shrink-0">
                                                 <X size={14} />
                                             </button>
                                         </div>
@@ -389,33 +432,46 @@ export default function NewCase() {
                         </div>
 
                         {/* Vault Selection */}
-                        <div className="border-l border-white/5 pl-0 lg:pl-8">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Select from Vault</h3>
+                        <div className="md:border-l md:border-border md:pl-12 pt-8 md:pt-0 border-t border-border md:border-t-0">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Shield size={16} className="text-primary" />
+                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Select from Vault</h3>
+                            </div>
+
                             {vaultDocs.length === 0 ? (
-                                <div className="bg-white/5 rounded-2xl p-8 text-center border border-white/5">
-                                    <Shield size={24} className="mx-auto mb-3 text-slate-800" />
-                                    <p className="text-xs text-slate-600 font-bold uppercase tracking-widest">Vault is empty</p>
-                                    <p className="text-[10px] text-slate-700 mt-2">New uploads can be saved to your vault after submission.</p>
+                                <div className="bg-input/50 border border-border rounded-2xl p-8 text-center shadow-inner">
+                                    <Shield size={32} className="mx-auto mb-3 text-muted-foreground/50" />
+                                    <p className="text-xs text-foreground font-bold uppercase tracking-widest">Vault is empty</p>
+                                    <p className="text-[10px] text-muted-foreground mt-2 max-w-[200px] mx-auto">New uploads can be automatically saved to your vault after submission.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 no-scrollbar">
                                     {vaultDocs.map(doc => (
                                         <button
                                             key={doc.id}
                                             onClick={() => toggleVaultDoc(doc)}
-                                            className={`w-full flex items-center justify-between text-left p-3 rounded-xl border transition-all ${selectedVaultDocs.find(d => d.id === doc.id)
-                                                ? 'bg-blue-600/10 border-blue-600/50 text-white'
-                                                : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'
+                                            className={`w-full flex items-center justify-between text-left p-3.5 rounded-xl border transition-all shadow-sm
+                                                ${selectedVaultDocs.find(d => d.id === doc.id)
+                                                    ? 'bg-primary/10 border-primary shadow-[0_0_10px_rgba(201,162,77,0.15)] ring-1 ring-primary/20'
+                                                    : 'bg-card border-border hover:border-primary/40 hover:bg-input'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-3 min-w-0">
-                                                <FileText size={14} className={selectedVaultDocs.find(d => d.id === doc.id) ? 'text-blue-400' : 'text-slate-600'} />
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-bold truncate">{doc.file_name}</p>
-                                                    <p className="text-[8px] uppercase tracking-widest opacity-50">{doc.category}</p>
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors
+                                                    ${selectedVaultDocs.find(d => d.id === doc.id) ? 'bg-primary text-primary-foreground' : 'bg-input border border-border text-muted-foreground'}`
+                                                }>
+                                                    <FileText size={14} />
+                                                </div>
+                                                <div className="min-w-0 pr-4">
+                                                    <p className={`text-sm font-bold truncate transition-colors ${selectedVaultDocs.find(d => d.id === doc.id) ? 'text-primary' : 'text-foreground'}`}>{doc.file_name}</p>
+                                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">{doc.category}</p>
                                                 </div>
                                             </div>
-                                            {selectedVaultDocs.find(d => d.id === doc.id) && <Check size={14} className="text-blue-400 shrink-0" />}
+                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all
+                                                ${selectedVaultDocs.find(d => d.id === doc.id) ? 'bg-primary border-primary text-primary-foreground scale-110' : 'bg-input border-border text-transparent scale-100'}`
+                                            }>
+                                                <Check size={12} />
+                                            </div>
                                         </button>
                                     ))}
                                 </div>
@@ -423,94 +479,158 @@ export default function NewCase() {
                         </div>
                     </div>
 
-                    <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 mt-10 pt-6 border-t border-white/5">
-                        <button onClick={handleBack} className="btn btn-secondary w-full sm:w-fit">Back</button>
-                        <button onClick={handleNext} className="btn btn-primary w-full sm:w-fit">Next: Payment {(files.length + selectedVaultDocs.length) > 0 && `(${(files.length + selectedVaultDocs.length)})`}</button>
+                    <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 mt-10 pt-6 border-t border-border">
+                        <button onClick={handleBack} className="w-full sm:w-auto px-6 py-3.5 bg-input hover:bg-card border border-border text-foreground rounded-[var(--radius-neumorph)] text-xs font-bold uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2">
+                            <ChevronLeft size={16} /> Back
+                        </button>
+                        <button onClick={handleNext} className="w-full sm:w-auto px-8 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-[var(--radius-neumorph)] shadow-[0_0_15px_rgba(201,162,77,0.3)] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider active:scale-95 group">
+                            Next: Payment {(files.length + selectedVaultDocs.length) > 0 && `(${(files.length + selectedVaultDocs.length)})`} <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                        </button>
                     </div>
                 </div>
             );
 
-            // PHASE 4: SELECT PLAN & PAYMENT
             case 3: return (
-                <div className="step-content px-4 sm:px-0 max-w-6xl mx-auto">
+                <div className="animate-fade-in">
                     {processingPayment ? (
-                        <div className="glass-card text-center py-12 sm:py-20 px-5 sm:px-8">
-                            <Loader2 className="animate-spin w-12 h-12 sm:w-16 sm:h-16 text-blue-500 mx-auto mb-6" />
-                            <h2 className="text-xl sm:text-2xl font-bold">Processing Secure Payment...</h2>
-                            <p className="text-slate-400 mt-2 text-sm sm:text-base">Creating case file and uploading documents.</p>
+                        <div className="bg-card border border-border shadow-neumorph rounded-[2rem] max-w-lg mx-auto text-center py-16 px-8">
+                            <div className="relative w-20 h-20 mx-auto mb-8">
+                                <div className="absolute inset-0 border-4 border-input rounded-full"></div>
+                                <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                                <Shield className="absolute inset-0 m-auto text-primary w-8 h-8 animate-pulse" />
+                            </div>
+                            <h2 className="text-2xl font-black mb-2 text-foreground">Processing Secure Payment</h2>
+                            <p className="text-muted-foreground text-sm">Please do not close this window. We are creating your case file and securely encrypting documents.</p>
                         </div>
                     ) : !invoice ? (
-                        <>
+                        <div className="max-w-5xl mx-auto">
                             <div className="text-center mb-10">
-                                <h2 className="text-2xl sm:text-3xl font-bold mb-4">Select Intake Priority</h2>
-                                <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base">
-                                    Choose a plan defined by {firms.find(f => f.id === formData.preferredFirmId)?.name || 'the firm'} to determine how fast your case is reviewed.
+                                <h2 className="text-2xl sm:text-3xl font-black mb-3 text-foreground tracking-tight">Select Intake Priority</h2>
+                                <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto">
+                                    Choose an intake plan defined by <span className="text-foreground font-bold">{firms.find(f => f.id === formData.preferredFirmId)?.name || 'the firm'}</span> to determine how quickly your case is reviewed.
                                 </p>
                             </div>
 
                             {!formData.preferredFirmId ? (
-                                <div className="glass-card text-center py-12 border-2 border-dashed border-white/10 mx-auto max-w-2xl">
-                                    <AlertCircle className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                                    <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] sm:text-xs">Please select a firm in the previous step</p>
-                                    <button onClick={handleBack} className="mt-4 text-sm text-blue-400 font-bold">Go Back</button>
+                                <div className="bg-card/50 border border-dashed border-border rounded-[2rem] text-center py-16 max-w-2xl mx-auto shadow-neumorph-inset">
+                                    <div className="w-16 h-16 bg-input rounded-full border border-border flex items-center justify-center mx-auto mb-4">
+                                        <AlertCircle className="w-8 h-8 text-muted-foreground/60" />
+                                    </div>
+                                    <p className="text-foreground font-bold mb-4">Firm Not Selected</p>
+                                    <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">Please go back to step 1 and select a firm to see their available priority tiers.</p>
+                                    <button onClick={() => setStep(1)} className="px-6 py-2 bg-card border border-border rounded-[var(--radius-neumorph)] text-xs font-bold uppercase tracking-widest text-primary hover:border-primary/50 transition-colors shadow-sm">Edit Details</button>
                                 </div>
                             ) : activePlans.length === 0 ? (
-                                <div className="glass-card text-center py-12 border-2 border-dashed border-white/10 mx-auto max-w-2xl">
-                                    <Clock className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                                    <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] sm:text-xs">This firm has not yet configured priority tiers</p>
-                                    <p className="text-slate-600 text-[10px] mt-2">Please select another firm or contact support.</p>
-                                    <button onClick={handleBack} className="mt-4 text-sm text-blue-400 font-bold">Go Back</button>
+                                <div className="bg-card/50 border border-dashed border-border rounded-[2rem] text-center py-16 max-w-2xl mx-auto shadow-neumorph-inset">
+                                    <div className="w-16 h-16 bg-input rounded-full border border-border flex items-center justify-center mx-auto mb-4">
+                                        <Clock className="w-8 h-8 text-muted-foreground/60" />
+                                    </div>
+                                    <p className="text-foreground font-bold mb-2">No Plans Available</p>
+                                    <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-6">This firm has not yet configured priority tiers. Please select another firm or contact support.</p>
+                                    <button onClick={() => setStep(1)} className="px-6 py-2 bg-card border border-border rounded-[var(--radius-neumorph)] text-xs font-bold uppercase tracking-widest text-primary hover:border-primary/50 transition-colors shadow-sm">Select Another Firm</button>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {activePlans.map(plan => (
-                                        <div key={plan.id} className={`relative bg-[#0F172A]/60 backdrop-blur-xl border ${plan.name.toLowerCase().includes('premium') || plan.name.toLowerCase().includes('standard') ? 'border-blue-500/50 ring-1 ring-blue-500/20' : 'border-white/10'} p-6 sm:p-8 rounded-[2rem] flex flex-col hover:border-blue-500 transition-all group`}>
-                                            {(plan.name.toLowerCase().includes('premium') || plan.name.toLowerCase().includes('standard')) && (
-                                                <div className="absolute top-0 right-0 bg-blue-600 text-[9px] sm:text-[10px] font-black px-4 py-1.5 rounded-bl-2xl rounded-tr-[1.9rem] uppercase tracking-widest">Recommended</div>
-                                            )}
-                                            <h3 className="font-black text-xl mb-2 text-white">{plan.name}</h3>
-                                            <div className="flex items-baseline gap-1 mb-6">
-                                                <span className="text-2xl sm:text-3xl font-black text-white">₦{Number(plan.price).toLocaleString()}</span>
-                                                <span className="text-slate-500 text-[9px] sm:text-[10px] font-bold uppercase">/ report</span>
-                                            </div>
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:px-4">
+                                        {activePlans.map(plan => {
+                                            const isRecommended = plan.name.toLowerCase().includes('premium') || plan.name.toLowerCase().includes('standard');
 
-                                            <div className="space-y-3 mb-8 flex-1">
-                                                {Array.isArray(plan.features) && plan.features.map((f: any, idx: number) => (
-                                                    <div key={idx} className="flex items-start gap-2">
-                                                        <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                                                        <span className="text-[11px] sm:text-xs text-slate-400 font-medium leading-relaxed">{typeof f === 'string' ? f : f.text}</span>
+                                            return (
+                                                <div
+                                                    key={plan.id}
+                                                    className={`relative bg-card rounded-[2rem] p-8 flex flex-col transition-all duration-300 group
+                                                    ${isRecommended
+                                                            ? 'border-2 border-primary shadow-[0_0_20px_rgba(201,162,77,0.15)] scale-100 lg:scale-[1.02] z-10'
+                                                            : 'border border-border shadow-sm hover:border-primary/50 hover:shadow-neumorph'
+                                                        }`}
+                                                >
+                                                    {isRecommended && (
+                                                        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[9px] font-black px-4 py-1.5 rounded-bl-xl rounded-tr-[1.8rem] uppercase tracking-widest shadow-sm">
+                                                            Recommended
+                                                        </div>
+                                                    )}
+
+                                                    <h3 className={`font-black text-xl mb-3 ${isRecommended ? 'text-primary' : 'text-foreground'}`}>
+                                                        {plan.name}
+                                                    </h3>
+
+                                                    <div className="flex items-baseline gap-1 mb-6 pb-6 border-b border-border">
+                                                        <span className="text-3xl font-black text-foreground">₦{Number(plan.price).toLocaleString()}</span>
+                                                        <span className="text-muted-foreground text-[10px] font-bold uppercase">/ report</span>
                                                     </div>
-                                                ))}
-                                            </div>
 
-                                            <button
-                                                onClick={() => handleCreateInvoice(plan)}
-                                                disabled={loading}
-                                                className="w-full py-4 bg-white/5 group-hover:bg-blue-600 border border-white/5 group-hover:border-blue-600 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-[0.98] disabled:opacity-50"
-                                            >
-                                                {loading ? 'Preparing...' : 'Select Plan'}
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
+                                                    <div className="space-y-4 mb-8 flex-1">
+                                                        {Array.isArray(plan.features) ? plan.features.map((f: any, idx: number) => (
+                                                            <div key={idx} className="flex items-start gap-3">
+                                                                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5 border border-primary/20">
+                                                                    <Check className="w-3 h-3 text-primary" />
+                                                                </div>
+                                                                <span className="text-xs text-muted-foreground font-medium leading-relaxed">{typeof f === 'string' ? f : f.text}</span>
+                                                            </div>
+                                                        )) : (
+                                                            <p className="text-xs text-muted-foreground italic">Priority processing features included.</p>
+                                                        )}
+                                                    </div>
+
+                                                    <button
+                                                        onClick={() => handleCreateInvoice(plan)}
+                                                        disabled={loading}
+                                                        className={`w-full py-4 rounded-[var(--radius-neumorph)] font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2
+                                                            ${isRecommended
+                                                                ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_15px_rgba(201,162,77,0.3)]'
+                                                                : 'bg-input hover:bg-card border border-border text-foreground hover:border-primary/50 shadow-inner hover:shadow-sm hover:text-primary'
+                                                            }`}
+                                                    >
+                                                        {loading ? <Loader2 className="animate-spin w-4 h-4" /> : null}
+                                                        {loading ? 'Preparing...' : 'Select Plan'}
+                                                    </button>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                    <div className="mt-12 flex justify-center">
+                                        <button onClick={handleBack} className="px-8 py-3.5 bg-input hover:bg-card border border-border text-foreground rounded-[var(--radius-neumorph)] text-xs font-bold uppercase tracking-wider transition-all shadow-sm flex items-center gap-2">
+                                            <ChevronLeft size={16} /> Edit Documents
+                                        </button>
+                                    </div>
+                                </>
                             )}
-                            <div className="mt-8 sm:mt-12 flex justify-start">
-                                <button onClick={handleBack} className="btn btn-secondary w-full sm:w-fit sm:px-8">Back</button>
-                            </div>
-                        </>
+                        </div>
                     ) : (
                         // INVOICE CREATED -> SHOW PAY BUTTON
-                        <div className="max-w-md mx-auto text-center glass-card p-6 sm:p-10">
-                            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-400">
+                        <div className="max-w-md mx-auto text-center bg-card border border-border shadow-neumorph rounded-[2rem] p-8 sm:p-12 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-[40px] -z-10 pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
+
+                            <div className="w-20 h-20 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto mb-6 text-primary shadow-[0_0_15px_rgba(201,162,77,0.2)]">
                                 <CreditCard size={32} />
                             </div>
-                            <h2 className="text-xl sm:text-2xl font-bold mb-2">Invoice Generated</h2>
-                            <p className="text-slate-400 mb-8 text-sm sm:text-base">Amount Due: <span className="text-white font-bold">₦{invoice.amount.toLocaleString()}</span></p>
+                            <h2 className="text-2xl font-black mb-2 text-foreground tracking-tight">Invoice Generated</h2>
+                            <p className="text-muted-foreground mb-8 text-sm">
+                                Secure payment for <span className="font-bold text-foreground mx-1">{invoice.plan_type}</span> Priority Intake
+                            </p>
 
-                            <button onClick={handlePayClick} className="w-full py-4 bg-[#0BA4DB] hover:bg-[#0993C3] text-white font-bold rounded-xl shadow-lg mb-4 flex items-center justify-center gap-2 text-sm sm:text-base">
-                                Pay Securely Now <ArrowRight size={16} />
+                            <div className="bg-input/50 border border-border rounded-2xl p-6 mb-8 shadow-inner flex flex-col gap-2">
+                                <div className="flex justify-between items-center text-sm font-bold text-muted-foreground w-full">
+                                    <span>Plan</span>
+                                    <span className="text-foreground">{invoice.plan_type}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm font-bold text-muted-foreground w-full">
+                                    <span>Matter Registration</span>
+                                    <span className="text-foreground">₦0.00</span>
+                                </div>
+                                <div className="w-full h-px bg-border my-2"></div>
+                                <div className="flex justify-between items-center w-full">
+                                    <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Total Due</span>
+                                    <span className="text-2xl font-black text-primary">₦{invoice.amount.toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            <button onClick={handlePayClick} className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-[var(--radius-neumorph)] shadow-[0_0_15px_rgba(201,162,77,0.3)] mb-4 flex items-center justify-center gap-2 text-sm uppercase tracking-wider transition-all active:scale-95 group">
+                                Pay Securely Now <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                             </button>
-                            <button onClick={() => setInvoice(null)} className="text-xs sm:text-sm text-slate-500 hover:text-white underline transition-colors">Change Plan</button>
+                            <button onClick={() => setInvoice(null)} className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+                                Cancel & Change Plan
+                            </button>
                         </div>
                     )}
                 </div>
@@ -521,20 +641,41 @@ export default function NewCase() {
     };
 
     return (
-        <div className="pb-10 sm:pb-20">
-            <div className="mb-6 sm:mb-10 text-center">
-                <h1 className="text-2xl sm:text-3xl font-bold">New Case Report</h1>
-                <div className="flex justify-center gap-2 mt-4 sm:mt-6">
+        <div className="pb-16 sm:pb-24 pt-4">
+            <div className="mb-10 sm:mb-16 text-center px-4">
+                <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground mb-6">New Case Report</h1>
+
+                {/* Custom Stepper */}
+                <div className="flex items-center justify-center max-w-sm mx-auto">
                     {steps.map((s, i) => (
-                        <div
-                            key={i}
-                            className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${step >= i ? 'w-8 sm:w-10 bg-blue-500' : 'w-4 sm:w-6 bg-white/10'}`}
-                            title={s.title}
-                        ></div>
+                        <React.Fragment key={i}>
+                            <div className="flex flex-col items-center gap-2 relative">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center z-10 transition-all duration-300 shadow-sm
+                                    ${step > i
+                                        ? 'bg-primary border-primary text-primary-foreground shadow-[0_0_10px_rgba(201,162,77,0.3)]'
+                                        : step === i
+                                            ? 'bg-card border-2 border-primary text-primary ring-2 ring-primary/20 ring-offset-2 ring-offset-background'
+                                            : 'bg-input border border-border text-muted-foreground'
+                                    }`}
+                                >
+                                    {step > i ? <Check size={16} strokeWidth={3} /> : <s.icon size={18} />}
+                                </div>
+                                <span className={`absolute -bottom-6 whitespace-nowrap text-[9px] font-bold uppercase tracking-widest transition-colors
+                                    ${step >= i ? 'text-primary' : 'text-muted-foreground opacity-50'}`}>
+                                    {s.title}
+                                </span>
+                            </div>
+                            {i < steps.length - 1 && (
+                                <div className="flex-1 h-1 mx-2 rounded-full bg-input border border-border shadow-inner relative overflow-hidden">
+                                    <div className={`absolute top-0 left-0 h-full bg-primary transition-all duration-500 rounded-full ${step > i ? 'w-full' : 'w-0'}`}></div>
+                                </div>
+                            )}
+                        </React.Fragment>
                     ))}
                 </div>
             </div>
-            <div className="max-w-6xl mx-auto w-full px-4 sm:px-0">
+
+            <div className="w-full px-4 sm:px-6 mt-16 sm:mt-12">
                 {renderStep()}
             </div>
         </div>

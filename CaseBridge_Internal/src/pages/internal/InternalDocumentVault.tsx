@@ -169,7 +169,7 @@ export default function InternalDocumentVault() {
     const handleViewDocument = async (fileUrl: string, fileName: string) => {
         const { data } = await supabase.storage
             .from('case_documents')
-            .createSignedUrl(fileUrl, 60);
+            .createSignedUrl(fileUrl, 3600); // 1 hour
 
         if (data) {
             setViewingDocument({ url: data.signedUrl, name: fileName });
@@ -313,7 +313,7 @@ export default function InternalDocumentVault() {
             {viewerOpen && viewingDocument && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-[#0F172A]/95 backdrop-blur-xl" onClick={() => setViewerOpen(false)} />
-                    <div className="relative bg-[#1E293B] border border-white/10 w-full max-w-6xl h-[90vh] rounded-3xl overflow-hidden shadow-3xl flex flex-col">
+                    <div className="relative bg-[#1E293B] border border-white/10 w-full max-w-6xl h-[90vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300">
                         {/* Header */}
                         <div className="flex items-center justify-between p-6 border-b border-white/5 bg-gradient-to-r from-indigo-600/10 to-transparent">
                             <div className="flex items-center gap-4">
@@ -322,33 +322,33 @@ export default function InternalDocumentVault() {
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-bold text-white">{viewingDocument.name}</h3>
-                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Document Viewer</p>
+                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">CaseBridge Secure Viewer</p>
                                 </div>
                             </div>
-                            <button onClick={() => setViewerOpen(false)} className="text-slate-500 hover:text-white transition-all active:rotate-90">
+                            <button onClick={() => setViewerOpen(false)} className="bg-white/5 hover:bg-white/10 p-2 rounded-xl text-slate-500 hover:text-white transition-all">
                                 <X size={24} />
                             </button>
                         </div>
 
                         {/* Document Content */}
-                        <div className="flex-1 overflow-hidden bg-slate-900/50">
+                        <div className="flex-1 overflow-hidden bg-slate-900/50 relative">
                             <iframe
                                 src={viewingDocument.url}
-                                className="w-full h-full"
+                                className="w-full h-full border-none"
                                 title={viewingDocument.name}
                             />
                         </div>
 
                         {/* Footer */}
                         <div className="p-4 border-t border-white/5 bg-gradient-to-r from-indigo-600/5 to-transparent flex justify-between items-center">
-                            <p className="text-xs text-slate-600 font-bold uppercase tracking-widest">Internal Secure View</p>
+                            <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] ml-2">Internal Compliance & Security Guaranteed</p>
                             <a
                                 href={viewingDocument.url}
-                                download
-                                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl shadow-xl shadow-indigo-600/20 uppercase tracking-widest text-xs transition-all flex items-center gap-2"
+                                download={viewingDocument.name}
+                                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl shadow-xl shadow-indigo-600/20 uppercase tracking-widest text-xs transition-all flex items-center gap-2 active:scale-95"
                             >
                                 <Download size={14} />
-                                Download
+                                Download File
                             </a>
                         </div>
                     </div>

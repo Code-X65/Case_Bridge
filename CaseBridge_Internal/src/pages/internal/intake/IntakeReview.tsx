@@ -2,17 +2,24 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useInternalSession } from '@/hooks/useInternalSession';
-import { FileText, Download, CheckCircle, XCircle, ArrowLeft, Loader2, User, Briefcase } from 'lucide-react';
+import { FileText, Download, CheckCircle, XCircle, ArrowLeft, Loader2, User, Briefcase, AlertTriangle, ShieldCheck, Eye, X } from 'lucide-react';
 import InternalSidebar from '../../../components/layout/InternalSidebar';
+import { useToast } from '@/components/common/ToastService';
+import { useConfirm } from '@/components/common/ConfirmDialogProvider';
+import Skeleton from '@/components/ui/Skeleton';
 
 export default function IntakeReview() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { session } = useInternalSession();
+    const { toast } = useToast();
+    const { confirm } = useConfirm();
     const [report, setReport] = useState<any>(null);
     const [docs, setDocs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewingDocument, setViewingDocument] = useState<{ url: string; name: string } | null>(null);
 
     const isAdminOrCM = session?.role === 'admin_manager' || session?.role === 'case_manager';
 
@@ -20,6 +27,8 @@ export default function IntakeReview() {
     const [caseManagers, setCaseManagers] = useState<any[]>([]);
     const [selectedAssociate, setSelectedAssociate] = useState('');
     const [selectedCM, setSelectedCM] = useState('');
+    const [conflicts, setConflicts] = useState<any[]>([]);
+    const [checkingConflicts, setCheckingConflicts] = useState(false);
 
     useEffect(() => {
         if (session && !isAdminOrCM) {
@@ -29,6 +38,30 @@ export default function IntakeReview() {
         fetchData();
         fetchStaff();
     }, [id, session]);
+
+    useEffect(() => {
+        if (report?.client) {
+            runConflictCheck();
+        }
+    }, [report]);
+
+    const runConflictCheck = async () => {
+        if (!report?.client || !session?.firm_id) return;
+        setCheckingConflicts(true);
+        try {
+            const fullName = `${report.client.first_name} ${report.client.last_name}`;
+            const { data, error } = await supabase.rpc('search_conflicts', {
+                search_query: fullName,
+                firm_id_filter: session.firm_id
+            });
+            if (error) throw error;
+            setConflicts(data || []);
+        } catch (err) {
+            console.error("Conflict check failed:", err);
+        } finally {
+            setCheckingConflicts(false);
+        }
+    };
 
     const fetchStaff = async () => {
         if (!session?.firm_id) return;
@@ -62,13 +95,13 @@ export default function IntakeReview() {
         try {
             const { error } = await supabase
                 .from('case_reports')
-                .update({ status: 'under_review' })
+                .update({ status: 'reviewing' })
                 .eq('id', id);
 
             if (error) throw error;
             await fetchData(); // Refresh
         } catch (err: any) {
-            alert("Error starting review: " + err.message);
+            toast("Error starting review: " + err.message, "error");
         } finally {
             setProcessing(false);
         }
@@ -76,7 +109,7 @@ export default function IntakeReview() {
 
     const handleAccept = async () => {
         if (!selectedAssociate) {
-            alert("Please assign an Associate Lawyer before accepting the case.");
+            toast("Please assign an Associate Lawyer before accepting the case.", "error");
             return;
         }
 
@@ -104,7 +137,8 @@ export default function IntakeReview() {
                         case_report_id: report.id,
                         title: report.title,
                         description: report.description,
-                        lifecycle_state: 'submitted',
+                        adverse_parties: report.adverse_parties,
+                        lifecycle_state: 'case_open',
                         created_by: session!.user_id,
                         assigned_associate: selectedAssociate,
                         assigned_case_manager: selectedCM || null
@@ -146,23 +180,23 @@ export default function IntakeReview() {
             // 5. Finalize Report Status (Always do this to ensure sync)
             const { error: uError } = await supabase
                 .from('case_reports')
-                .update({ status: 'accepted' })
+                .update({ status: 'case_open' })
                 .eq('id', report.id);
 
             if (uError) throw uError;
 
-            alert("Case Accepted Successfully!");
+            toast("Case Accepted Successfully!", "success");
             navigate('/intake');
 
         } catch (err: any) {
-            alert("Error accepting case: " + err.message);
+            toast("Error accepting case: " + err.message, "error");
         } finally {
             setProcessing(false);
         }
     };
 
     const handleReject = async () => {
-        if (!confirm("Are you sure you want to reject this case? This cannot be undone.")) return;
+        if (!(await confirm({ title: "Reject Case?", message: "Are you sure you want to reject this case? This cannot be undone.", isDangerous: true, confirmText: 'Reject' }))) return;
         setProcessing(true);
         try {
             const { error } = await supabase
@@ -173,7 +207,7 @@ export default function IntakeReview() {
             if (error) throw error;
             navigate('/intake');
         } catch (err: any) {
-            alert("Error rejecting case: " + err.message);
+            toast("Error rejecting case: " + err.message, "error");
         } finally {
             setProcessing(false);
         }
@@ -214,12 +248,35 @@ export default function IntakeReview() {
         if (data) window.open(data.signedUrl, '_blank');
     };
 
+    const handleViewDocument = async (fileUrl: string, fileName: string) => {
+        const { data } = await supabase.storage
+            .from('case_documents')
+            .createSignedUrl(fileUrl, 3600); // 1 hour
+
+        if (data) {
+            setViewingDocument({ url: data.signedUrl, name: fileName });
+            setViewerOpen(true);
+        }
+    };
+
     if (loading) return (
-        <div className="min-h-screen bg-[#0F172A] text-white flex items-center justify-center">
+        <div className="min-h-screen bg-[#0F172A] text-white">
             <InternalSidebar />
-            <div className="ml-64 p-10 flex flex-col items-center gap-4">
-                <Loader2 className="animate-spin text-indigo-500 w-12 h-12" />
-                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Loading Case Intelligence...</p>
+            <div className="ml-64 p-10 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
+                <button className="flex items-center gap-2 text-transparent mb-6 font-bold text-sm select-none">
+                    <ArrowLeft size={16} /> Back
+                </button>
+                <Skeleton className="h-32 w-full" />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-8">
+                        <Skeleton className="h-48 w-full" />
+                        <Skeleton className="h-48 w-full" />
+                    </div>
+                    <div className="space-y-8">
+                        <Skeleton className="h-48 w-full" />
+                        <Skeleton className="h-48 w-full" />
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -246,8 +303,8 @@ export default function IntakeReview() {
                         <div className="flex items-center gap-4 mb-3">
                             <h1 className="text-3xl font-black text-white tracking-tight">{report.title}</h1>
                             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${report.status === 'submitted' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                report.status === 'under_review' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                    report.status === 'accepted' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                report.status === 'reviewing' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                    report.status === 'case_open' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                         'bg-red-500/10 text-red-500 border-red-500/20'
                                 }`}>
                                 {report.status}
@@ -271,7 +328,7 @@ export default function IntakeReview() {
                             </button>
                         )}
 
-                        {report.status === 'under_review' && (
+                        {report.status === 'reviewing' && (
                             <div className="flex gap-4">
                                 <button
                                     onClick={handleReject}
@@ -296,7 +353,7 @@ export default function IntakeReview() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-8">
-                        {report.status === 'under_review' && (
+                        <div className="space-y-6">
                             <div className="bg-[#1E293B] border border-white/10 rounded-2xl p-8 border-l-4 border-l-indigo-500">
                                 <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <User size={14} /> Critical: Case Assignment
@@ -330,7 +387,48 @@ export default function IntakeReview() {
                                     </div>
                                 </div>
                             </div>
-                        )}
+
+                            {/* Conflict of Interest Check */}
+                            <div className={`bg-[#1E293B] border rounded-2xl p-8 border-l-4 ${conflicts.length > 0 ? 'border-amber-500 border-white/10' : 'border-emerald-500 border-white/10'}`}>
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                        <ShieldCheck size={14} /> Ethical Conflict Search
+                                    </h3>
+                                    {checkingConflicts ? (
+                                        <Loader2 size={14} className="animate-spin text-indigo-500" />
+                                    ) : (
+                                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${conflicts.length > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                            {conflicts.length} Potential Matches
+                                        </span>
+                                    )}
+                                </div>
+
+                                {conflicts.length === 0 ? (
+                                    <div className="flex items-center gap-3 text-emerald-400/60 bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/10">
+                                        <CheckCircle size={16} />
+                                        <p className="text-sm font-bold">Clear: No direct conflicts found for this client identity.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 text-amber-500 mb-2">
+                                            <AlertTriangle size={16} />
+                                            <p className="text-xs font-black uppercase tracking-wider">Warning: Review matches before acceptance</p>
+                                        </div>
+                                        {conflicts.map((c, i) => (
+                                            <div key={i} className="bg-white/5 border border-white/5 rounded-xl p-4 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-sm font-bold text-white">{c.match_name}</p>
+                                                    <p className="text-[10px] text-slate-500 uppercase font-black">{c.match_type} {c.matter_title ? `in ${c.matter_title}` : ''}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-indigo-400 text-sm font-black italic">{Math.round(c.similarity_score * 100)}% Match</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
                         <div className="bg-[#1E293B] border border-white/10 rounded-2xl p-8">
                             <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-white/5 pb-2">Case Description</h3>
@@ -338,6 +436,15 @@ export default function IntakeReview() {
                                 {report.description}
                             </p>
                         </div>
+
+                        {report.adverse_parties && (
+                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-8">
+                                <h3 className="text-sm font-bold text-amber-500 uppercase tracking-widest mb-4 border-b border-amber-500/10 pb-2">Identified Adverse Parties</h3>
+                                <p className="text-slate-300 font-bold text-lg">
+                                    {report.adverse_parties}
+                                </p>
+                            </div>
+                        )}
 
                         <div className="bg-[#1E293B] border border-white/10 rounded-2xl p-8">
                             <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-white/5 pb-2">Documents ({docs.length})</h3>
@@ -356,13 +463,22 @@ export default function IntakeReview() {
                                                     <p className="text-xs text-slate-500">{(doc.file_size / 1024).toFixed(1)} KB</p>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => handleDownload(doc.file_path)}
-                                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                                                title="Download File"
-                                            >
-                                                <Download size={18} />
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleViewDocument(doc.file_path, doc.file_name)}
+                                                    className="p-2 text-slate-400 hover:text-indigo-400 rounded-lg transition-colors"
+                                                    title="Preview Document"
+                                                >
+                                                    <Eye size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDownload(doc.file_path)}
+                                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                                    title="Download File"
+                                                >
+                                                    <Download size={18} />
+                                                </button>
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>
@@ -415,6 +531,52 @@ export default function IntakeReview() {
                     </div>
                 </div>
             </div>
+
+            {/* Document Viewer Modal */}
+            {viewerOpen && viewingDocument && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-[#0F172A]/95 backdrop-blur-xl" onClick={() => setViewerOpen(false)} />
+                    <div className="relative bg-[#1E293B] border border-white/10 w-full max-w-6xl h-[90vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-gradient-to-r from-indigo-600/10 to-transparent">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-indigo-600/20 rounded-xl flex items-center justify-center text-indigo-400 border border-indigo-600/30">
+                                    <FileText size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">{viewingDocument.name}</h3>
+                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">CaseBridge Secure Viewer</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setViewerOpen(false)} className="bg-white/5 hover:bg-white/10 p-2 rounded-xl text-slate-500 hover:text-white transition-all">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Document Content */}
+                        <div className="flex-1 overflow-hidden bg-slate-900/50 relative">
+                            <iframe
+                                src={viewingDocument.url}
+                                className="w-full h-full border-none"
+                                title={viewingDocument.name}
+                            />
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 border-t border-white/5 bg-gradient-to-r from-indigo-600/5 to-transparent flex justify-between items-center">
+                            <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] ml-2">Internal Compliance & Security Guaranteed</p>
+                            <a
+                                href={viewingDocument.url}
+                                download={viewingDocument.name}
+                                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl shadow-xl shadow-indigo-600/20 uppercase tracking-widest text-xs transition-all flex items-center gap-2 active:scale-95"
+                            >
+                                <Download size={14} />
+                                Download File
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

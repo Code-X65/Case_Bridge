@@ -3,7 +3,7 @@ import {
     LayoutDashboard, Users, Briefcase,
     Contact2, FileText, CreditCard, BarChart3,
     Settings, FileClock, Shield, Bell,
-    User, LogOut, Calendar
+    User, LogOut, Calendar, FileCheck
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -108,7 +108,9 @@ export default function InternalSidebar() {
                         <NavItem label="Firm Settings" path="/internal/settings" icon={Settings} />
 
                         <NavItem label="Case Intake" path="/internal/intake" icon={FileText} />
-                        <NavItem label="Case Management" path="/internal/matters" icon={Briefcase} />
+                        <NavItem label="Approval Queue" path="/internal/approval-queue" icon={FileCheck} />
+                        <NavItem label="Managed Cases" path="/internal/managed-matters" icon={Shield} />
+                        <NavItem label="All Matters" path="/internal/matters" icon={Briefcase} />
                         <NavItem label="Firm Calendar" path="/internal/calendar" icon={Calendar} />
                         <NavItem label="Clients" path="/internal/clients" icon={Contact2} />
                         <NavItem label="Document Vault" path="/internal/documents" icon={FileClock} />
@@ -128,8 +130,10 @@ export default function InternalSidebar() {
                     <>
                         <SectionHeader label="Primary" />
                         <NavItem label="Dashboard" path="/internal/case-manager/dashboard" icon={LayoutDashboard} />
+                        <NavItem label="Approval Queue" path="/internal/approval-queue" icon={FileCheck} />
                         <NavItem label="Intake" path="/intake" icon={FileText} />
-                        <NavItem label="Matters" path="/internal/case-manager/matters" icon={Briefcase} />
+                        <NavItem label="Managed Cases" path="/internal/managed-matters" icon={Shield} />
+                        <NavItem label="All Matters" path="/internal/case-manager/matters" icon={Briefcase} />
                         <NavItem label="Clients" path="/internal/case-manager/clients" icon={Contact2} />
                         <NavItem label="Calendar" path="/internal/case-manager/calendar" icon={FileClock} />
                         <NavItem label="Documents" path="/internal/case-manager/documents" icon={FileText} />

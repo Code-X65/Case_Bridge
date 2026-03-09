@@ -3,16 +3,21 @@ import AdminDashboard from './AdminDashboard';
 import CaseManagerDashboard from './CaseManagerDashboard';
 import AssociateDashboard from './AssociateDashboard';
 import { Navigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import Skeleton from '@/components/ui/Skeleton';
 
 export default function DashboardDispatcher() {
     const { session, isLoading } = useInternalSession();
 
     if (isLoading) return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0F172A]">
-            <div className="text-center">
-                <Loader2 className="h-10 w-10 animate-spin text-indigo-500 mx-auto mb-6" />
-                <p className="text-[10px] text-slate-500 font-black tracking-[0.2em] uppercase">Security Clearance In Progress</p>
+        <div className="min-h-screen p-10 bg-[#0F172A]">
+            <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+                 <Skeleton className="w-64 h-10" />
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                     <Skeleton className="h-32 w-full" />
+                     <Skeleton className="h-32 w-full" />
+                     <Skeleton className="h-32 w-full" />
+                 </div>
+                 <Skeleton className="h-[400px] w-full" />
             </div>
         </div>
     );

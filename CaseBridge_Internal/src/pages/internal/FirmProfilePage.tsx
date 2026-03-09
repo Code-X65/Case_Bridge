@@ -7,10 +7,13 @@ import {
     Loader2, Save, Building2, Globe, Mail, Phone, MapPin, Upload,
     ShieldCheck, ShieldAlert, Activity
 } from 'lucide-react';
+import { useToast } from '@/components/common/ToastService';
+import Skeleton from '@/components/ui/Skeleton';
 
 export default function FirmProfilePage() {
     const { session } = useInternalSession();
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     const [logoUrl, setLogoUrl] = useState('');
 
     // Form state
@@ -79,10 +82,10 @@ export default function FirmProfilePage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['firm_profile'] });
-            alert('Firm profile updated successfully.');
+            toast('Firm profile updated successfully.', 'success');
         },
         onError: (error: any) => {
-            alert(`Failed to update profile: ${error.message}`);
+            toast(`Failed to update profile: ${error.message}`, 'error');
         }
     });
 
@@ -104,8 +107,23 @@ export default function FirmProfilePage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
-                <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
+            <div className="min-h-screen bg-[#0F172A] text-white">
+                <InternalSidebar />
+                <div className="ml-64 p-12 max-w-4xl animate-in fade-in duration-500">
+                    <div className="mb-12">
+                        <Skeleton className="h-10 w-64 mb-2" />
+                        <Skeleton className="h-6 w-96" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                        <div className="space-y-6">
+                            <Skeleton className="h-64 w-full" />
+                        </div>
+                        <div className="md:col-span-2 space-y-8">
+                            <Skeleton className="h-64 w-full" />
+                            <Skeleton className="h-64 w-full" />
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }

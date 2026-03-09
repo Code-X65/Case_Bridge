@@ -58,7 +58,7 @@ export function useInternalSession() {
             if (!authSession) throw new Error('Not authenticated');
 
             // Generate a secure token
-            const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+            const token = crypto.randomUUID();
 
             const expiresAt = new Date();
             expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour session
@@ -98,10 +98,33 @@ export function useInternalSession() {
         },
     });
 
+    const refreshSession = useMutation({
+        mutationFn: async () => {
+            if (!session) return;
+
+            const newExpiresAt = new Date();
+            newExpiresAt.setHours(newExpiresAt.getHours() + 24);
+
+            const { data, error } = await supabase
+                .from('internal_sessions')
+                .update({ expires_at: newExpiresAt.toISOString() })
+                .eq('id', session.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['internal_session'] });
+        },
+    });
+
     return {
         session,
         isLoading,
         createSession,
         clearSession,
+        refreshSession,
     };
 }

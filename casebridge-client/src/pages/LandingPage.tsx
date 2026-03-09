@@ -1,309 +1,367 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import {
-    FileText,
-    CheckCircle2,
-    ArrowRight,
-    Menu,
-    X,
-    Gavel,
-    Scale,
-    CreditCard,
-    BarChart3,
-    MessageSquare,
-    Zap,
-    Shield as ShieldIcon,
-    Lock as LockIcon,
-    ChevronRight
-} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Shield, Lock, FileText, Cpu, CheckCircle2, Users, FolderOpen } from 'lucide-react';
 
-const LandingPage = () => {
-    const navigate = useNavigate();
-    const { user } = useAuth();
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-    const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-
+export default function LandingPage() {
     return (
-        <div className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/30 font-sans">
-            {/* Navigation */}
-            <nav className="fixed w-full z-50 glass border-b border-white/5 backdrop-blur-xl">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-20">
-                        <div className="flex items-center gap-12">
-                            <div className="flex-shrink-0 cursor-pointer flex items-center gap-2" onClick={() => navigate('/')}>
-                                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                                    <Scale className="text-white w-5 h-5" />
-                                </div>
-                                <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200 tracking-tight">
-                                    CASE BRIDGE
-                                </h1>
-                            </div>
-                            <div className="hidden lg:block">
-                                <div className="flex items-baseline space-x-8">
-                                    <NavDropdown title="Services" />
-                                    <NavDropdown title="Practice Areas" />
-                                    <a href="#resources" className="hover:text-primary transition-colors px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-white">Resources</a>
-                                    <a href="#consultation" className="hover:text-primary transition-colors px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-white">Free Consultation</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="hidden lg:flex items-center space-x-6">
-                            <div className="text-sm font-medium text-muted-foreground">
-                                800-555-0199
-                            </div>
-                            <div className="h-4 w-px bg-white/10"></div>
-                            {user ? (
-                                <button
-                                    onClick={() => navigate('/dashboard')}
-                                    className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-md text-sm font-bold shadow-lg shadow-blue-900/20 transition-all duration-200 hover:-translate-y-0.5"
-                                >
-                                    Dashboard
-                                </button>
-                            ) : (
-                                <>
-                                    <button
-                                        onClick={() => navigate('/login')}
-                                        className="text-sm font-semibold hover:text-white text-muted-foreground transition-colors"
-                                    >
-                                        Log In
-                                    </button>
-                                    <button
-                                        onClick={() => navigate('/signup')}
-                                        className="bg-orange-600 hover:bg-orange-500 text-white px-5 py-2.5 rounded-md text-sm font-bold shadow-lg shadow-orange-900/20 transition-all duration-200 hover:-translate-y-0.5"
-                                    >
-                                        OPEN CASE
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                        <div className="-mr-2 flex lg:hidden">
-                            <button
-                                onClick={toggleMenu}
-                                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-white/10 focus:outline-none"
+        <div className="flex flex-col gap-24 pb-24 lg:gap-32 w-full">
+
+            {/* 1. HERO SECTION (Following Leap design structure) */}
+            <section className="relative pt-12 lg:pt-20">
+                <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.1fr] gap-12 lg:gap-8 items-start">
+
+                    {/* Left Column */}
+                    <div className="flex flex-col pr-0 lg:pr-8">
+                        <h1 className="text-5xl lg:text-7xl xl:text-[5rem] font-bold text-foreground leading-[1.1] tracking-tight mb-6">
+                            Legal Problems Are Complicated.<br />
+                            <span className="text-primary mt-2 block">Finding Help Shouldn't Be.</span>
+                        </h1>
+
+                        <p className="text-xl text-muted-foreground mb-10 max-w-2xl leading-relaxed">
+                            CaseBridge guides you through the first step of any legal situation. Describe your issue. Understand your legal position. Prepare for professional legal support.
+                        </p>
+
+                        {/* CTAs */}
+                        <div className="flex flex-col sm:flex-row gap-4 mb-16">
+                            <Link
+                                to="/signup"
+                                className="px-8 py-4 rounded-[var(--radius-neumorph)] bg-background text-foreground font-bold text-lg text-center shadow-neumorph hover:shadow-neumorph-inset transition-all border border-border"
                             >
-                                <span className="sr-only">Open main menu</span>
-                                {isMenuOpen ? <X className="block h-6 w-6" /> : <Menu className="block h-6 w-6" />}
-                            </button>
+                                Start Your Legal Journey
+                            </Link>
+                            <Link
+                                to="/how-it-works"
+                                className="px-8 py-4 rounded-[var(--radius-neumorph)] bg-primary text-primary-foreground border border-primary font-bold text-lg text-center hover:opacity-90 transition-opacity shadow-[0_4px_14px_0_rgba(201,162,77,0.39)]"
+                            >
+                                See How CaseBridge Works
+                            </Link>
                         </div>
-                    </div>
-                </div>
 
-                {/* Mobile menu */}
-                {isMenuOpen && (
-                    <div className="lg:hidden glass border-b border-white/5 absolute w-full">
-                        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                            <a href="#features" className="hover:bg-white/5 block px-3 py-2 rounded-md text-base font-medium">Services</a>
-                            <a href="#solutions" className="hover:bg-white/5 block px-3 py-2 rounded-md text-base font-medium">Practice Areas</a>
-                            <a href="#pricing" className="hover:bg-white/5 block px-3 py-2 rounded-md text-base font-medium">Consultation</a>
-                            <div className="mt-4 border-t border-white/10 pt-4 flex flex-col space-y-3 px-3">
-                                {user ? (
-                                    <button
-                                        onClick={() => navigate('/dashboard')}
-                                        className="w-full text-center py-3 text-base font-bold bg-blue-600 text-white hover:bg-blue-500 rounded-md shadow-lg"
-                                    >
-                                        Dashboard
-                                    </button>
-                                ) : (
-                                    <>
-                                        <button
-                                            onClick={() => navigate('/login')}
-                                            className="w-full text-center py-3 text-base font-medium hover:bg-white/5 rounded-md border border-white/10"
-                                        >
-                                            Log In
-                                        </button>
-                                        <button
-                                            onClick={() => navigate('/signup')}
-                                            className="w-full text-center py-3 text-base font-bold bg-orange-600 text-white hover:bg-orange-500 rounded-md shadow-lg"
-                                        >
-                                            OPEN NEW CASE
-                                        </button>
-                                    </>
-                                )}
+                        {/* Below CTAs (Inspired by Leap "Free live support" & "Community insights") */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                            {/* Feature 1 */}
+                            <div className="flex items-start gap-4">
+                                <div className="w-16 h-16 shrink-0 rounded-[var(--radius-neumorph)] bg-card shadow-neumorph flex items-center justify-center text-primary border border-border/50">
+                                    <FileText size={28} />
+                                </div>
+                                <div className="flex flex-col justify-center h-16">
+                                    <h3 className="text-lg font-bold text-foreground leading-tight mb-1">Guided Legal Intake</h3>
+                                    <Link to="/how-it-works" className="text-sm text-primary font-medium hover:underline flex items-center gap-1">
+                                        Learn about intake <ArrowRight size={14} />
+                                    </Link>
+                                </div>
+                            </div>
+
+                            {/* Feature 2 */}
+                            <div className="flex items-start gap-4">
+                                <div className="w-16 h-16 shrink-0 rounded-[var(--radius-neumorph)] bg-card shadow-neumorph flex items-center justify-center text-primary border border-border/50">
+                                    <Cpu size={28} />
+                                </div>
+                                <div className="flex flex-col justify-center h-16">
+                                    <h3 className="text-lg font-bold text-foreground leading-tight mb-1">Intelligent Guidance</h3>
+                                    <Link to="/ai-guidance" className="text-sm text-primary font-medium hover:underline flex items-center gap-1">
+                                        See AI features <ArrowRight size={14} />
+                                    </Link>
+                                </div>
                             </div>
                         </div>
+
                     </div>
-                )}
-            </nav>
 
-            {/* Hero Section */}
-            <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden bg-gradient-to-b from-background via-blue-950/20 to-background">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                        <div className="max-w-2xl">
-                            <h1 className="text-4xl lg:text-6xl font-extrabold tracking-tight mb-8 leading-[1.15] text-white">
-                                Professional Legal <br />
-                                <span className="text-blue-400">Representation</span> <br />
-                                & Case Management
-                            </h1>
-                            <ul className="space-y-4 mb-10">
-                                <HeroListItem text="Expert attorneys dedicated to resolving your legal matters" />
-                                <HeroListItem text="Real-time case tracking and transparent communication" />
-                                <HeroListItem text="Secure document handling and easy payment options" />
-                            </ul>
+                    {/* Right Column - Hero Image */}
+                    <div className="relative h-full min-h-[500px] w-full mt-12 xl:mt-0 flex items-center justify-center">
+                        {/* Split 3D Scene */}
+                        <div className="w-full max-w-2xl aspect-[4/3] relative rounded-3xl bg-card border border-border/30 shadow-neumorph flex items-center justify-center overflow-hidden">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(201,162,77,0.1)_0,transparent_60%)]"></div>
 
-                            <div className="flex flex-col sm:flex-row gap-3 max-w-md">
-                                <input
-                                    type="email"
-                                    placeholder="Enter your email address"
-                                    className="h-14 bg-white/5 border-white/10 focus:border-blue-500/50 text-white placeholder:text-muted-foreground w-full rounded-md"
-                                />
-                                <button
-                                    onClick={() => navigate('/signup')}
-                                    className="h-14 bg-orange-600 hover:bg-orange-500 text-white font-bold px-8 rounded-md whitespace-nowrap shadow-xl shadow-orange-900/20 transition-all hover:scale-105"
-                                >
-                                    Review My Case
-                                </button>
+                            {/* Left Side of Scene: Stressed User with Paperwork */}
+                            <div className="absolute left-[10%] top-[40%] -translate-y-1/2 w-48 h-64 bg-background rounded-2xl border border-border/50 shadow-neumorph-inset flex flex-col items-center justify-center p-6 z-10 animate-float" style={{ animationDelay: '0s' }}>
+                                <Users size={56} className="text-muted-foreground/60 mb-6" />
+                                <div className="space-y-3 w-full">
+                                    <div className="h-2 w-full bg-border/60 rounded"></div>
+                                    <div className="h-2 w-3/4 bg-border/60 rounded"></div>
+                                    <div className="h-2 w-5/6 bg-border/60 rounded"></div>
+                                    <div className="h-2 w-2/3 bg-border/60 rounded"></div>
+                                </div>
                             </div>
-                            <p className="mt-4 text-xs text-muted-foreground uppercase tracking-wider font-semibold">
-                                Confidential • Free Initial Evaluation • No Obligation
-                            </p>
-                        </div>
 
-                        <div className="relative lg:h-[600px] w-full flex items-center justify-center">
-                            {/* Dashboard Visual */}
-                            <div className="relative w-full aspect-[16/9] group">
-                                <img
-                                    src="/assets/hero-dashboard.png"
-                                    alt="CaseBridge Dashboard"
-                                    className="w-full h-full object-cover rounded-xl shadow-2xl border border-white/10 ring-1 ring-white/5"
-                                />
-                                {/* Floating Element Overlay */}
-                                <div className="absolute bottom-10 -left-10 bg-card/90 backdrop-blur-md border border-white/10 p-4 rounded-lg shadow-xl mb-4 w-64 animate-float z-20">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400">
-                                            <CheckCircle2 className="w-6 h-6" />
+                            {/* Connecting Wave */}
+                            <svg className="absolute inset-0 w-full h-full z-10 opacity-30" preserveAspectRatio="none">
+                                <path d="M 0,200 C 200,200 250,120 1000,120" fill="none" stroke="currentColor" className="text-primary" strokeWidth="2" strokeDasharray="6,6" />
+                            </svg>
+
+                            {/* Right Side of Scene: Floating AI Dashboard */}
+                            <div className="absolute right-[10%] top-[40%] -translate-y-1/4 w-64 bg-[#112233] rounded-2xl border border-primary/20 shadow-[0_10px_40px_rgba(201,162,77,0.15)] flex flex-col p-6 z-20 animate-float" style={{ animationDelay: '2s' }}>
+                                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <Cpu size={20} />
+                                    </div>
+                                    <div className="text-sm font-bold text-white">AI Analysis</div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="bg-background/40 rounded-xl p-3 border border-white/5">
+                                        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Legal Category</div>
+                                        <div className="text-sm font-medium text-white flex items-center gap-2">
+                                            <FolderOpen size={14} className="text-primary" /> Employment
                                         </div>
-                                        <div>
-                                            <div className="text-sm font-bold text-white">Payment Received</div>
-                                            <div className="text-xs text-muted-foreground">$1,250.00 - Johnson Case</div>
+                                    </div>
+                                    <div className="bg-background/40 rounded-xl p-3 border border-white/5">
+                                        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Urgency</div>
+                                        <div className="text-sm font-medium text-secondary">Medium</div>
+                                    </div>
+                                    <div className="bg-background/40 rounded-xl p-3 border border-white/5">
+                                        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Status</div>
+                                        <div className="text-sm font-medium text-emerald-400 flex items-center gap-1.5">
+                                            <CheckCircle2 size={14} /> Intake Complete
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </section>
 
-            {/* DUAL PATHWAY SECTION */}
-            <section className="py-20 -mt-10 relative z-30 px-4">
-                <div className="max-w-7xl mx-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* 2. TRUST BAR */}
+            <section className="py-10 border-y border-border/40 bg-card/20 backdrop-blur-sm -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-10 md:gap-20">
+                    {[
+                        { icon: Lock, label: 'Encrypted Platform' },
+                        { icon: Shield, label: 'Secure Infrastructure' },
+                        { icon: Users, label: 'Privacy First' },
+                        { icon: Cpu, label: 'AI Assisted' },
+                    ].map((item, i) => (
+                        <div key={i} className="flex items-center gap-3 text-muted-foreground/80">
+                            <item.icon size={26} className="text-primary/80" />
+                            <span className="font-semibold tracking-wide">{item.label}</span>
+                        </div>
+                    ))}
+                </div>
+            </section>
 
-                        {/* PATH 1: REPORTERS */}
-                        <div className="relative group overflow-hidden rounded-[2.5rem] border border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent p-12 transition-all hover:border-blue-500/30 hover:shadow-[0_0_50px_rgba(59,130,246,0.1)]">
-                            <div className="relative z-10">
-                                <div className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center text-blue-400 mb-8 border border-blue-600/30 group-hover:scale-110 transition-transform">
-                                    <ShieldIcon size={32} />
+            {/* 3. PROBLEM SECTION */}
+            <section className="py-12">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 xl:gap-24 items-center">
+                    {/* 3D Illustration */}
+                    <div className="order-2 lg:order-1 relative h-[450px]">
+                        <div className="absolute inset-0 rounded-[2rem] bg-card border border-border/40 shadow-neumorph flex items-center justify-center overflow-hidden">
+                            <div className="absolute w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(11,26,42,0.8)_0,rgba(22,43,60,1)_100%)]"></div>
+
+                            {/* 3D user overwhelmed */}
+                            <div className="relative z-10 flex items-center gap-4 xl:gap-8">
+                                <div className="w-24 h-32 xl:w-32 xl:h-40 bg-background rounded-xl border border-border/50 shadow-neumorph-inset flex flex-col p-4 opacity-40 transform -rotate-12 translate-y-8 translate-x-8">
+                                    <div className="h-2 w-full bg-border/50 rounded mb-2"></div>
                                 </div>
-                                <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-4 leading-none">
-                                    Incident <br /> <span className="text-blue-500">Intake Portal</span>
-                                </h3>
-                                <p className="text-slate-500 font-medium mb-10 max-w-sm">
-                                    For individuals and organizations looking to report a new legal matter, submit evidence, or request emergency legal representation.
-                                </p>
-                                <button
-                                    onClick={() => navigate('/signup')}
-                                    className="flex items-center gap-3 text-xs font-black uppercase tracking-[0.3em] text-white bg-blue-600 px-8 py-5 rounded-2xl shadow-xl shadow-blue-600/20 hover:bg-blue-500 transition-all scale-100 active:scale-95"
-                                >
-                                    Report New Case <ArrowRight size={16} />
-                                </button>
-                            </div>
-                            <div className="absolute top-10 right-10 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
-                                <ShieldIcon size={200} />
+                                <div className="w-28 h-36 xl:w-36 xl:h-48 bg-background rounded-xl border border-primary/20 shadow-neumorph-inset flex flex-col p-4 z-20">
+                                    <div className="h-2 w-full bg-border/50 rounded mb-3"></div>
+                                    <div className="h-2 w-3/4 bg-border/50 rounded mb-1"></div>
+                                    <div className="h-2 w-full bg-border/50 rounded"></div>
+                                </div>
+                                <div className="w-24 h-32 xl:w-32 xl:h-40 bg-background rounded-xl border border-border/50 shadow-neumorph-inset flex flex-col p-4 opacity-40 transform rotate-12 translate-y-4 -translate-x-8">
+                                    <div className="h-2 w-full bg-border/50 rounded mb-2"></div>
+                                </div>
+
+                                {/* AI Hologram */}
+                                <div className="absolute top-0 right-10 transform -translate-y-6 translate-x-12 bg-card border border-primary/30 rounded-[1.2rem] p-5 shadow-[0_0_30px_rgba(201,162,77,0.25)] animate-float">
+                                    <Cpu size={40} className="text-primary" />
+                                </div>
                             </div>
                         </div>
-
-                        {/* PATH 2: CLIENTS */}
-                        <div className="relative group overflow-hidden rounded-[2.5rem] border border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent p-12 transition-all hover:border-indigo-500/30 hover:shadow-[0_0_50px_rgba(99,102,241,0.1)]">
-                            <div className="relative z-10">
-                                <div className="w-16 h-16 bg-indigo-600/20 rounded-2xl flex items-center justify-center text-indigo-400 mb-8 border border-indigo-600/30 group-hover:scale-110 transition-transform">
-                                    <LockIcon size={32} />
-                                </div>
-                                <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-4 leading-none">
-                                    Secure <br /> <span className="text-indigo-500">Client Login</span>
-                                </h3>
-                                <p className="text-slate-500 font-medium mb-10 max-w-sm">
-                                    Already have an active case? Access your secure vault, message your assigned legal team, and track your case progression in real-time.
-                                </p>
-                                <button
-                                    onClick={() => navigate('/login')}
-                                    className="flex items-center gap-3 text-xs font-black uppercase tracking-[0.3em] text-white border border-white/10 bg-white/5 px-8 py-5 rounded-2xl hover:bg-white/10 transition-all scale-100 active:scale-95"
-                                >
-                                    Access Workspace <ChevronRight size={16} />
-                                </button>
-                            </div>
-                            <div className="absolute top-10 right-10 opacity-[0.03] group-hover:opacity-[0.02] transition-opacity">
-                                <LockIcon size={200} />
-                            </div>
+                    </div>
+                    <div className="order-1 lg:order-2">
+                        <h2 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-8 leading-tight"> Most People Don't Know Where To Start With Legal Issues</h2>
+                        <div className="text-lg xl:text-xl text-muted-foreground space-y-6">
+                            <p>Legal systems can be complex and intimidating.</p>
+                            <p>People often struggle with:</p>
+                            <ul className="space-y-4 font-medium text-foreground py-2">
+                                <li className="flex items-center gap-4 bg-card px-5 py-4 rounded-xl border border-border/30 shadow-neumorph w-max">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-secondary"></div>
+                                    understanding their legal position
+                                </li>
+                                <li className="flex items-center gap-4 bg-card px-5 py-4 rounded-xl border border-border/30 shadow-neumorph w-max">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-secondary"></div>
+                                    organizing important documents
+                                </li>
+                                <li className="flex items-center gap-4 bg-card px-5 py-4 rounded-xl border border-border/30 shadow-neumorph w-max">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-secondary"></div>
+                                    finding the right legal professional
+                                </li>
+                            </ul>
+                            <p className="pt-6 text-primary font-bold text-2xl tracking-tight">CaseBridge simplifies the early stages of legal engagement.</p>
                         </div>
-
                     </div>
                 </div>
             </section>
 
-            {/* Social Proof Strip */}
-            <div className="border-y border-white/5 bg-white/[0.02]">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-                    <p className="text-center text-sm font-semibold text-muted-foreground uppercase tracking-widest mb-8">
-                        Recognized Excellence in Legal Practice
+            {/* 4. WHAT IS CASEBRIDGE SECTION */}
+            <section className="py-12">
+                <div className="text-center max-w-3xl mx-auto mb-16">
+                    <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">What Is CaseBridge?</h2>
+                    <p className="text-xl text-muted-foreground leading-relaxed">
+                        CaseBridge is a digital platform designed to simplify the early stages of legal engagement. Instead of approaching legal professionals without preparation, CaseBridge helps individuals organize their situation into a structured legal intake profile.
                     </p>
-                    <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
-                        {['Avvo', 'Super Lawyers', 'Martindale-Hubbell', 'Best Lawyers', 'Chambers'].map((brand) => (
-                            <div key={brand} className="text-xl font-bold font-serif flex items-center gap-2">
-                                <Gavel className="w-6 h-6" /> <span>{brand}</span>
-                            </div>
-                        ))}
+                    <p className="text-xl text-muted-foreground leading-relaxed mt-4 font-medium text-foreground/80">
+                        This ensures clarity, efficiency, and better legal conversations.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="bg-card rounded-[2rem] p-8 border border-border/40 shadow-neumorph">
+                        <div className="w-14 h-14 rounded-xl bg-background shadow-neumorph-inset flex items-center justify-center text-primary mb-6">
+                            <FileText size={28} />
+                        </div>
+                        <h3 className="text-xl font-bold text-foreground mb-4">Guided Legal Intake</h3>
+                        <p className="text-muted-foreground leading-relaxed">A structured questionnaire helps you describe your legal situation clearly.</p>
+                    </div>
+
+                    <div className="bg-card rounded-[2rem] p-8 border border-border/40 shadow-neumorph transform lg:-translate-y-4">
+                        <div className="w-14 h-14 rounded-xl bg-background shadow-neumorph-inset flex items-center justify-center text-primary mb-6">
+                            <Cpu size={28} />
+                        </div>
+                        <h3 className="text-xl font-bold text-foreground mb-4">Smart Case Structuring</h3>
+                        <p className="text-muted-foreground leading-relaxed">Your responses are organised into a clear legal intake summary.</p>
+                    </div>
+
+                    <div className="bg-card rounded-[2rem] p-8 border border-border/40 shadow-neumorph">
+                        <div className="w-14 h-14 rounded-xl bg-background shadow-neumorph-inset flex items-center justify-center text-primary mb-6">
+                            <Users size={28} />
+                        </div>
+                        <h3 className="text-xl font-bold text-foreground mb-4">Prepared Legal Engagement</h3>
+                        <p className="text-muted-foreground leading-relaxed">You approach legal professionals with organised information.</p>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            {/* Main Feature - Blue Section */}
-            <section className="py-24 bg-gradient-to-br from-indigo-900 to-blue-900 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                    <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-                            Complete Transparency <br /> in Your Legal Journey
-                        </h2>
-                        <div className="flex flex-wrap justify-center gap-2 max-w-4xl mx-auto bg-white/10 p-1 rounded-full backdrop-blur-sm">
-                            {['Case Status', 'Secure Documents', 'Billing & Payments', 'Direct Messaging', 'Court Dates'].map((tab, i) => (
-                                <button key={tab} className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${i === 1 ? 'bg-white text-blue-900 shadow-lg' : 'text-blue-100 hover:bg-white/10'}`}>
-                                    {tab}
-                                </button>
+            {/* 5. HOW IT WORKS SECTION */}
+            <section className="py-12">
+                <div className="text-center mb-16">
+                    <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">A Clear 3 Step Process</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                    {/* Step 1 */}
+                    <div className="flex flex-col items-center text-center">
+                        <div className="w-32 h-32 rounded-[2rem] bg-card border border-border/50 shadow-neumorph flex items-center justify-center text-primary mb-8 relative">
+                            <div className="absolute top-0 right-0 -mt-3 -mr-3 w-8 h-8 rounded-full bg-primary text-background font-bold flex items-center justify-center shadow-lg">1</div>
+                            <FileText size={48} />
+                        </div>
+                        <h3 className="text-2xl font-bold text-foreground mb-4">Describe Your Situation</h3>
+                        <p className="text-muted-foreground">Answer a set of structured questions designed to understand your legal issue.</p>
+                    </div>
+                    {/* Step 2 */}
+                    <div className="flex flex-col items-center text-center">
+                        <div className="w-32 h-32 rounded-[2rem] bg-card border border-border/50 shadow-neumorph flex items-center justify-center text-primary mb-8 relative">
+                            <div className="absolute top-0 right-0 -mt-3 -mr-3 w-8 h-8 rounded-full bg-primary text-background font-bold flex items-center justify-center shadow-lg">2</div>
+                            <Cpu size={48} />
+                        </div>
+                        <h3 className="text-2xl font-bold text-foreground mb-4">CaseBridge Structures Your Case</h3>
+                        <p className="text-muted-foreground">Your responses are analysed and organised into a clear case profile.</p>
+                    </div>
+                    {/* Step 3 */}
+                    <div className="flex flex-col items-center text-center">
+                        <div className="w-32 h-32 rounded-[2rem] bg-card border border-border/50 shadow-neumorph flex items-center justify-center text-primary mb-8 relative">
+                            <div className="absolute top-0 right-0 -mt-3 -mr-3 w-8 h-8 rounded-full bg-primary text-background font-bold flex items-center justify-center shadow-lg">3</div>
+                            <Users size={48} />
+                        </div>
+                        <h3 className="text-2xl font-bold text-foreground mb-4">Prepare For Legal Assistance</h3>
+                        <p className="text-muted-foreground">Your structured profile prepares you for productive conversations with legal professionals.</p>
+                    </div>
+                </div>
+                <div className="flex justify-center mt-12">
+                    <Link to="/how-it-works" className="text-primary font-bold hover:underline flex items-center gap-2">View full process <ArrowRight size={16} /></Link>
+                </div>
+            </section>
+
+            {/* 6. LEGAL AREAS SECTION */}
+            <section className="py-12 bg-card/20 rounded-[3rem] px-8 lg:px-16 border border-border/20 shadow-neumorph-inset">
+                <div className="mb-12">
+                    <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">Legal Situations CaseBridge Helps You Navigate</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[
+                        { title: "Immigration", list: ["Visa issues", "Residency concerns", "Immigration disputes"] },
+                        { title: "Employment", list: ["Workplace disputes", "Termination issues", "Employment contracts"] },
+                        { title: "Family Law", list: ["Divorce", "Child custody", "Family disputes"] },
+                        { title: "Business Law", list: ["Partnership disputes", "Commercial contracts", "Business compliance"] },
+                        { title: "Property Law", list: ["Ownership disputes", "Rental disagreements", "Land transactions"] },
+                        { title: "Consumer Rights", list: ["Service disputes", "Product issues", "Contract disagreements"] }
+                    ].map((area, idx) => (
+                        <div key={idx} className="bg-card rounded-2xl p-6 border border-border/50 shadow-neumorph hover:scale-[1.02] transition-transform cursor-pointer">
+                            <h3 className="text-xl font-bold text-foreground mb-4">{area.title}</h3>
+                            <ul className="space-y-2 text-muted-foreground text-sm">
+                                {area.list.map((item, i) => (
+                                    <li key={i} className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-primary/50"></div>
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+                <div className="mt-12 text-center">
+                    <Link to="/legal-areas" className="text-primary font-bold hover:underline flex items-center justify-center gap-2">Explore all legal areas <ArrowRight size={16} /></Link>
+                </div>
+            </section>
+
+            {/* 7. AI GUIDANCE SECTION */}
+            <section className="py-12">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                    <div>
+                        <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">Intelligent Legal Guidance</h2>
+                        <p className="text-xl text-muted-foreground mb-10 leading-relaxed">
+                            CaseBridge includes intelligent systems that help identify legal categories, urgency levels, and relevant pathways based on the information you provide.
+                        </p>
+                        <div className="space-y-6">
+                            {[
+                                { title: 'Legal Category Identification', desc: 'The system identifies the legal area relevant to your situation.' },
+                                { title: 'Urgency Detection', desc: 'Cases are categorized based on urgency signals.' },
+                                { title: 'Structured Case Summary', desc: 'Your responses are converted into a clear legal intake summary.' }
+                            ].map((feature, idx) => (
+                                <div key={idx} className="flex gap-4">
+                                    <div className="mt-1">
+                                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary border border-primary/30">
+                                            <CheckCircle2 size={14} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-lg font-bold text-foreground">{feature.title}</h4>
+                                        <p className="text-muted-foreground">{feature.desc}</p>
+                                    </div>
+                                </div>
                             ))}
                         </div>
+                        <div className="mt-10">
+                            <Link to="/ai-guidance" className="text-primary font-bold hover:underline flex items-center gap-2">Learn about our AI <ArrowRight size={16} /></Link>
+                        </div>
                     </div>
 
-                    <div className="relative rounded-xl overflow-hidden glass shadow-2xl border border-white/10 max-w-5xl mx-auto">
-                        <div className="grid grid-cols-1 md:grid-cols-12">
-                            <div className="md:col-span-4 bg-white/5 border-r border-white/10 p-8 flex flex-col justify-center">
-                                <div className="space-y-6">
-                                    <h3 className="text-2xl font-bold text-white">Always Know Where You Stand</h3>
-                                    <p className="text-blue-100 leading-relaxed">
-                                        Never wonder about the status of your case. Our secure client portal gives you 24/7 access to case updates, filed documents, and upcoming milestones.
-                                    </p>
-                                    <button className="text-white font-bold flex items-center gap-2 group">
-                                        See How It Works <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                    </button>
+                    <div className="relative h-[400px]">
+                        <div className="absolute inset-0 rounded-[2rem] bg-card border border-border/40 shadow-neumorph flex items-center justify-center p-8">
+                            <div className="w-full max-w-sm bg-background rounded-2xl border border-border shadow-neumorph-inset p-6 space-y-5">
+                                <div className="flex items-center justify-between border-b border-border pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <Cpu className="text-primary" />
+                                        <span className="font-bold text-foreground">AI Intelligence</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="md:col-span-8 bg-card/50 p-6">
-                                <div className="rounded-lg bg-background border border-white/5 h-[300px] flex items-center justify-center relative overlow-hidden">
-                                    <div className="absolute top-4 left-4 right-4 flex gap-4">
-                                        <div className="w-1/3 h-24 bg-blue-500/10 rounded border border-blue-500/20 p-4">
-                                            <div className="w-8 h-8 rounded bg-blue-500/20 mb-2"></div>
-                                            <div className="h-2 w-16 bg-blue-500/20 rounded"></div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Case Category</div>
+                                        <div className="text-base font-bold text-foreground bg-card px-3 py-2 rounded-lg border border-border shadow-neumorph">Immigration</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Urgency</div>
+                                        <div className="text-base font-bold text-secondary bg-card px-3 py-2 rounded-lg border border-border shadow-neumorph">High</div>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex-1">
+                                            <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Documents</div>
+                                            <div className="text-sm font-medium text-foreground">3 Uploaded</div>
                                         </div>
-                                        <div className="w-1/3 h-24 bg-indigo-500/10 rounded border border-indigo-500/20 p-4">
-                                            <div className="w-8 h-8 rounded bg-indigo-500/20 mb-2"></div>
-                                            <div className="h-2 w-16 bg-indigo-500/20 rounded"></div>
-                                        </div>
-                                        <div className="w-1/3 h-24 bg-purple-500/10 rounded border border-purple-500/20 p-4">
-                                            <div className="w-8 h-8 rounded bg-purple-500/20 mb-2"></div>
-                                            <div className="h-2 w-16 bg-purple-500/20 rounded"></div>
+                                        <div className="flex-1">
+                                            <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Status</div>
+                                            <div className="text-sm font-medium text-emerald-400">Ready</div>
                                         </div>
                                     </div>
                                 </div>
@@ -313,242 +371,120 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* Stats Cards Section */}
-            <section className="-mt-16 pb-20 relative z-20">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <StatsCard number="98%" label="Success Rate in Litigation" />
-                        <StatsCard number="5,000+" label="Happy Clients Represented" />
-                        <StatsCard number="Top Rated" label="For Client Satisfaction & Trust" highlight />
+            {/* 8. SECURITY SECTION */}
+            <section className="py-12 bg-card/20 rounded-[3rem] p-8 lg:p-16 border border-border/20 shadow-neumorph-inset flex flex-col items-center text-center">
+                <div className="w-20 h-20 rounded-2xl bg-card shadow-neumorph flex items-center justify-center text-primary mb-8 border border-border/40">
+                    <Lock size={40} />
+                </div>
+                <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">Your Information Is Protected</h2>
+                <p className="text-xl text-muted-foreground mb-12 max-w-3xl leading-relaxed">
+                    Legal information is highly sensitive. CaseBridge is designed with security and privacy as foundational principles.
+                </p>
+                <div className="flex flex-wrap justify-center gap-4 lg:gap-8 mb-8">
+                    {['End-to-end encryption', 'Secure authentication', 'Strict access controls', 'Data privacy protection'].map((item, idx) => (
+                        <div key={idx} className="bg-card px-6 py-3 rounded-full border border-border shadow-neumorph text-foreground font-medium flex items-center gap-2">
+                            <Shield size={16} className="text-primary" /> {item}
+                        </div>
+                    ))}
+                </div>
+                <span className="text-primary font-bold">Built into our core platform</span>
+            </section>
+
+            {/* 9. SUCCESS STORIES SECTION */}
+            <section className="py-12">
+                <div className="text-center mb-16">
+                    <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">Real People. Real Legal Clarity.</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                    <div className="bg-card rounded-[2rem] p-10 border border-border/40 shadow-neumorph relative">
+                        <div className="text-6xl text-primary/20 absolute top-6 left-6 font-serif">"</div>
+                        <p className="text-lg text-foreground italic relative z-10 mb-8 mt-4 leading-relaxed">
+                            I was overwhelmed by my employment dispute. CaseBridge helped me organize everything before speaking with a lawyer.
+                        </p>
+                        <div className="flex items-center gap-4 border-t border-border pt-6">
+                            <div className="w-12 h-12 rounded-full bg-background shadow-neumorph-inset flex items-center justify-center text-primary font-bold text-lg border border-border/50">S</div>
+                            <div className="font-bold text-foreground">Sarah M</div>
+                        </div>
+                    </div>
+                    <div className="bg-card rounded-[2rem] p-10 border border-border/40 shadow-neumorph relative">
+                        <div className="text-6xl text-primary/20 absolute top-6 left-6 font-serif">"</div>
+                        <p className="text-lg text-foreground italic relative z-10 mb-8 mt-4 leading-relaxed">
+                            The intake process helped me understand my immigration situation clearly. I walked into my consultation feeling prepared instead of confused.
+                        </p>
+                        <div className="flex items-center gap-4 border-t border-border pt-6">
+                            <div className="w-12 h-12 rounded-full bg-background shadow-neumorph-inset flex items-center justify-center text-primary font-bold text-lg border border-border/50">D</div>
+                            <div className="font-bold text-foreground">David R</div>
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-12 text-center">
+                    <Link to="/success-stories" className="text-primary font-bold hover:underline flex items-center justify-center gap-2">Read more stories <ArrowRight size={16} /></Link>
+                </div>
+            </section>
+
+            {/* 10. PRICING PREVIEW */}
+            <section className="py-12">
+                <div className="text-center mb-16">
+                    <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">Start With Confidence</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                    {/* Free Plan */}
+                    <div className="bg-background rounded-[2rem] p-10 border border-border shadow-neumorph-inset flex flex-col">
+                        <h3 className="text-2xl font-bold text-foreground mb-2">Free Plan</h3>
+                        <div className="text-4xl font-bold text-foreground mb-8">$0</div>
+                        <ul className="space-y-4 mb-10 flex-1">
+                            <li className="flex gap-3 text-muted-foreground"><CheckCircle2 className="text-primary shrink-0" /> Create account</li>
+                            <li className="flex gap-3 text-muted-foreground"><CheckCircle2 className="text-primary shrink-0" /> Complete legal intake questionnaire</li>
+                            <li className="flex gap-3 text-muted-foreground"><CheckCircle2 className="text-primary shrink-0" /> Generate case profile</li>
+                        </ul>
+                        <Link to="/signup" className="w-full block text-center py-4 rounded-[var(--radius-neumorph)] border border-primary text-primary font-bold hover:bg-primary/5 transition-colors shadow-neumorph">Get Started</Link>
+                    </div>
+
+                    {/* Premium Plan */}
+                    <div className="bg-card rounded-[2rem] p-10 border border-primary/40 shadow-[0_0_30px_rgba(201,162,77,0.15)] flex flex-col relative overflow-hidden">
+                        <div className="absolute top-6 right-6 bg-primary/20 text-primary text-xs font-bold px-3 py-1 rounded-full border border-primary/30">POPULAR</div>
+                        <h3 className="text-2xl font-bold text-foreground mb-2">Premium Plan</h3>
+                        <div className="text-4xl font-bold text-foreground mb-8">Custom</div>
+                        <ul className="space-y-4 mb-10 flex-1">
+                            <li className="flex gap-3 text-foreground font-medium"><CheckCircle2 className="text-primary shrink-0" /> Priority support</li>
+                            <li className="flex gap-3 text-foreground font-medium"><CheckCircle2 className="text-primary shrink-0" /> Enhanced case preparation</li>
+                            <li className="flex gap-3 text-foreground font-medium"><CheckCircle2 className="text-primary shrink-0" /> Extended assistance</li>
+                        </ul>
+                        <Link to="/contact" className="w-full block text-center py-4 rounded-[var(--radius-neumorph)] bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity shadow-[0_4px_14px_0_rgba(201,162,77,0.39)]">Contact Enterprise Sales</Link>
                     </div>
                 </div>
             </section>
 
-            {/* Z-Pattern Features */}
-            <div className="py-20 space-y-32">
-                <FeatureSection
-                    title="Stay connected with"
-                    titleHighlight="your legal team"
-                    description="Our platform connects you directly with your attorney. Send messages, request meetings, and get answers to your questions without phone tag."
-                    imageSide="left"
-                    icon={<Zap className="w-6 h-6 text-yellow-400" />}
-                    imageSrc="/assets/hero-dashboard.png"
-                />
+            {/* 11. FINAL CTA SECTION */}
+            <section className="py-20 mb-12">
+                <div className="bg-card rounded-[2.5rem] p-12 lg:p-20 text-center border border-primary/20 shadow-[0_20px_50px_rgba(201,162,77,0.1)] relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(201,162,77,0.15)_0,transparent_70%)]"></div>
 
-                <FeatureSection
-                    title="Visualize your"
-                    titleHighlight="case timeline"
-                    description="Understand exactly where your case is in the legal process. From intake to resolution, track every milestone and know what to expect next."
-                    imageSide="right"
-                    icon={<BarChart3 className="w-6 h-6 text-green-400" />}
-                    imageSrc="/assets/feature-pipeline.png"
-                />
-
-                <FeatureSection
-                    title="Secure access to"
-                    titleHighlight="legal documents"
-                    description="Access your important files anytime, anywhere. Securely upload evidence and review contracts, filings, and settlements in our encrypted vault."
-                    imageSide="left"
-                    icon={<FileText className="w-6 h-6 text-blue-400" />}
-                    imageSrc="/assets/feature-document.png"
-                />
-
-                <FeatureSection
-                    title="Transparent billing &"
-                    titleHighlight="easy payments"
-                    description="No surprise fees. View detailed invoices, understand your costs, and make secure payments online with a click of a button."
-                    imageSide="right"
-                    icon={<CreditCard className="w-6 h-6 text-purple-400" />}
-                    imageSrc="/assets/hero-dashboard.png"
-                />
-            </div>
-
-            {/* Footer / CTA 2 */}
-            <section className="py-24 bg-card border-t border-white/5">
-                <div className="max-w-4xl mx-auto text-center px-4">
-                    <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-8 text-blue-400">
-                        <MessageSquare className="w-8 h-8" />
-                    </div>
-                    <h2 className="text-3xl md:text-5xl font-bold mb-8 text-white">Resolve your legal matters with confidence</h2>
-                    <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-                        Join the thousands of clients who found justice and peace of mind with CaseBridge.
-                    </p>
-                    <div className="flex flex-col sm:flex-row justify-center gap-4">
-                        <button
-                            onClick={() => navigate('/signup')}
-                            className="btn bg-orange-600 hover:bg-orange-500 text-white font-bold h-14 px-10 rounded-full shadow-lg"
-                        >
-                            Start Your Free Case Evaluation
-                        </button>
-                        <button
-                            onClick={() => navigate('/demo')}
-                            className="btn glass hover:bg-white/10 h-14 px-10 rounded-full text-white font-semibold"
-                        >
-                            Schedule a Demo
-                        </button>
+                    <div className="relative z-10 max-w-3xl mx-auto flex flex-col items-center">
+                        <div className="w-20 h-20 rounded-[var(--radius-neumorph)] bg-background shadow-neumorph-inset flex items-center justify-center text-primary mb-8 border border-border">
+                            <div className="w-8 h-8 rounded-[8px] bg-primary"></div>
+                        </div>
+                        <h2 className="text-4xl lg:text-6xl font-bold text-foreground mb-8 leading-tight tracking-tight">
+                            Legal clarity begins with understanding your situation.
+                        </h2>
+                        <div className="flex flex-col sm:flex-row gap-5 items-center justify-center">
+                            <Link
+                                to="/signup"
+                                className="w-full sm:w-auto px-10 py-5 rounded-[var(--radius-neumorph)] bg-primary text-primary-foreground font-bold text-xl hover:opacity-90 transition-opacity shadow-[0_4px_20px_rgba(201,162,77,0.4)]"
+                            >
+                                Create Your CaseBridge Account
+                            </Link>
+                            <Link
+                                to="/login"
+                                className="w-full sm:w-auto px-10 py-5 rounded-[var(--radius-neumorph)] bg-background text-foreground font-bold text-xl hover:bg-white/5 transition-colors border border-border shadow-neumorph text-center"
+                            >
+                                Login
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* Footer */}
-            <footer className="bg-black py-16 border-t border-white/10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10 mb-12 text-sm">
-                        <div className="col-span-2 lg:col-span-1">
-                            <div className="flex items-center gap-2 mb-6">
-                                <Scale className="text-blue-500 w-6 h-6" />
-                                <span className="text-xl font-bold text-white">CASE BRIDGE</span>
-                            </div>
-                            <p className="text-muted-foreground mb-6 max-w-xs">
-                                The all-in-one legal case management software built for modern law firms.
-                            </p>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-white mb-6">Services</h4>
-                            <ul className="space-y-4 text-muted-foreground">
-                                <li><a href="#" className="hover:text-blue-400">Practice Areas</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Our Attorneys</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Case Results</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Free Consultation</a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-white mb-6">Clients</h4>
-                            <ul className="space-y-4 text-muted-foreground">
-                                <li><a href="#" className="hover:text-blue-400">Client Portal</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Make a Payment</a></li>
-                                <li><a href="#" className="hover:text-blue-400">FAQ</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Legal Resources</a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-white mb-6">Firm</h4>
-                            <ul className="space-y-4 text-muted-foreground">
-                                <li><a href="#" className="hover:text-blue-400">About Us</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Careers</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Contact</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Partners</a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-white mb-6">Contact</h4>
-                            <ul className="space-y-4 text-muted-foreground">
-                                <li><a href="#" className="hover:text-blue-400">Find Office</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Email Us</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Call Now</a></li>
-                                <li><a href="#" className="hover:text-blue-400">Emergency Support</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground">
-                        <p>&copy; {new Date().getFullYear()} CaseBridge Inc. All rights reserved.</p>
-                        <div className="flex gap-6 mt-4 md:mt-0">
-                            <a href="#" className="hover:text-white">Privacy Policy</a>
-                            <a href="#" className="hover:text-white">Terms of Service</a>
-                            <a href="#" className="hover:text-white">Cookie Policy</a>
-                        </div>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
-};
-
-// Helper Components
-
-const NavDropdown = ({ title }: { title: string }) => (
-    <div className="group relative">
-        <button className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-white transition-colors py-2">
-            {title} <span className="text-[10px]">▼</span>
-        </button>
-        <div className="absolute top-full left-0 w-48 pt-2 hidden group-hover:block transition-all">
-            <div className="glass bg-background border border-white/10 rounded-lg shadow-xl py-2 flex flex-col">
-                <a href="#" className="px-4 py-2 text-sm text-foreground hover:bg-white/5 hover:text-blue-400">Option 1</a>
-                <a href="#" className="px-4 py-2 text-sm text-foreground hover:bg-white/5 hover:text-blue-400">Option 2</a>
-                <a href="#" className="px-4 py-2 text-sm text-foreground hover:bg-white/5 hover:text-blue-400">Option 3</a>
-            </div>
-        </div>
-    </div>
-);
-
-const HeroListItem = ({ text }: { text: string }) => (
-    <li className="flex items-start gap-3">
-        <CheckCircle2 className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-        <span className="text-lg text-blue-100/90">{text}</span>
-    </li>
-);
-
-const StatsCard = ({ number, label, highlight }: { number: string, label: string, highlight?: boolean }) => (
-    <div className={`glass-card p-10 rounded-xl border relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300 ${highlight ? 'border-blue-500/30 bg-blue-900/10' : 'border-white/10'}`}>
-        {highlight && <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/20 rounded-bl-full -mr-10 -mt-10"></div>}
-        <div className={`text-5xl font-extrabold mb-4 ${highlight ? 'text-blue-400' : 'text-white'}`}>
-            {number}
-        </div>
-        <div className="text-lg text-muted-foreground font-medium">
-            {label}
-        </div>
-    </div>
-);
-
-const FeatureSection = ({
-    title,
-    titleHighlight,
-    description,
-    imageSide,
-    icon,
-    imageSrc
-}: {
-    title: string,
-    titleHighlight: string,
-    description: string,
-    imageSide: 'left' | 'right',
-    icon?: React.ReactNode,
-    imageSrc?: string
-}) => (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className={`flex flex-col lg:flex-row gap-16 items-center ${imageSide === 'right' ? '' : 'lg:flex-row-reverse'}`}>
-            <div className="flex-1 space-y-6">
-                <div className="flex items-center gap-3 mb-2">
-                    {icon && <div className="p-3 bg-white/5 rounded-lg border border-white/10">{icon}</div>}
-                    <span className="text-sm font-bold text-blue-400 uppercase tracking-widest">Feature Highlight</span>
-                </div>
-                <h3 className="text-3xl md:text-5xl font-bold text-white leading-tight">
-                    {title} <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
-                        {titleHighlight}
-                    </span>
-                </h3>
-                <p className="text-lg text-muted-foreground leading-relaxed">
-                    {description}
-                </p>
-                <button className="btn btn-secondary w-auto gap-2 group mt-4">
-                    Learn More <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </button>
-            </div>
-            <div className="flex-1 w-full">
-                {/* Feature Visual */}
-                <div className="relative aspect-video rounded-xl bg-gradient-to-br from-card to-background border border-white/10 shadow-2xl overflow-hidden group hover:border-blue-500/30 transition-colors">
-                    {imageSrc ? (
-                        <div className="w-full h-full relative overflow-hidden">
-                            <div className="absolute inset-0 bg-blue-900/10 mix-blend-overlay z-10"></div>
-                            <img src={imageSrc} alt={title} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
-                        </div>
-                    ) : (
-                        <>
-                            <div className="absolute inset-0 bg-blue-500/5 group-hover:bg-blue-500/10 transition-colors rounded-xl"></div>
-                            {/* Internal Mockup Elements */}
-                            <div className="h-full flex flex-col gap-4 relative z-10 p-6">
-                                <div className="h-8 w-1/3 bg-white/5 rounded"></div>
-                                <div className="flex-1 bg-white/5 rounded border border-white/5 flex items-center justify-center">
-                                    <div className="text-white/20 font-mono text-sm">UI Visual Placeholder</div>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
-        </div>
-    </section>
-);
-
-export default LandingPage;
+}

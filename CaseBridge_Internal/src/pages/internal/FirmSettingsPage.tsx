@@ -8,12 +8,15 @@ import {
     ShieldCheck, ShieldAlert, Activity, FileText, Lock, Clock, Settings,
     CheckCircle2, Info
 } from 'lucide-react';
+import { useToast } from '@/components/common/ToastService';
+import Skeleton from '@/components/ui/Skeleton';
 
 type Tab = 'general' | 'security' | 'governance';
 
 export default function FirmSettingsPage() {
     const { session } = useInternalSession();
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     const [activeTab, setActiveTab] = useState<Tab>('general');
     const [logoPreview, setLogoPreview] = useState('');
     const [saveSuccess, setSaveSuccess] = useState(false);
@@ -84,7 +87,7 @@ export default function FirmSettingsPage() {
             setTimeout(() => setSaveSuccess(false), 3000);
         },
         onError: (error: any) => {
-            alert(`Failed to update settings: ${error.message}`);
+            toast(`Failed to update settings: ${error.message}`, 'error');
         }
     });
 
@@ -107,10 +110,24 @@ export default function FirmSettingsPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
-                <div className="text-center">
-                    <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mx-auto mb-4" />
-                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Loading Infrastructure...</p>
+            <div className="min-h-screen bg-[#0F172A] text-white">
+                <InternalSidebar />
+                <div className="ml-64 p-12 max-w-5xl animate-in fade-in duration-500">
+                    <div className="mb-12 flex justify-between">
+                        <div>
+                            <Skeleton className="h-12 w-64 mb-2" />
+                            <Skeleton className="h-6 w-96" />
+                        </div>
+                        <Skeleton className="h-12 w-48" />
+                    </div>
+                    <Skeleton className="h-14 w-96 mb-10" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                        <Skeleton className="h-96 w-full" />
+                        <div className="md:col-span-2 space-y-8">
+                            <Skeleton className="h-64 w-full" />
+                            <Skeleton className="h-64 w-full" />
+                        </div>
+                    </div>
                 </div>
             </div>
         );
@@ -435,8 +452,8 @@ function TabButton({ active, icon: Icon, label, onClick }: any) {
         <button
             onClick={onClick}
             className={`flex items-center gap-3 px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${active
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                 }`}
         >
             <Icon size={16} className={active ? 'text-white' : 'text-slate-600'} />

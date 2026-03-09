@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import Header from '../components/visitor/Header';
 import {
-    Shield,
     User,
     Briefcase,
     Globe,
@@ -14,8 +14,17 @@ import {
     Lock,
     Eye,
     ChevronRight,
-    ChevronLeft
+    ChevronLeft,
+    AlertCircle
 } from 'lucide-react';
+
+const STEPS = [
+    { title: 'Identity', desc: 'Who are you representing?', icon: User },
+    { title: 'Alignment', desc: 'What is your primary goal?', icon: Briefcase },
+    { title: 'Priority', desc: 'Timeline & Insight', icon: Clock },
+    { title: 'Workspace', desc: 'Integrity Verification', icon: ShieldCheck }
+];
+
 export default function Onboarding() {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -32,13 +41,8 @@ export default function Onboarding() {
         referralSource: ''
     });
 
-    const nextStep = () => {
-        setStep(s => s + 1);
-    };
-
-    const prevStep = () => {
-        setStep(s => s - 1);
-    };
+    const nextStep = () => setStep(s => s + 1);
+    const prevStep = () => setStep(s => s - 1);
 
     const handleVerification = () => {
         setVerifying(true);
@@ -108,271 +112,288 @@ export default function Onboarding() {
     };
 
     return (
-        <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-blue-500/30">
-            {/* Background Decoration */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 z-50"></div>
-            <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full"></div>
-            <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/10 blur-[120px] rounded-full"></div>
+        <div className="min-h-screen bg-background text-foreground flex flex-col font-sans relative overflow-hidden selection:bg-primary/30">
+            <Header />
 
-            <div className="w-full max-w-4xl relative z-10">
-                {/* Header Section */}
-                <div className="text-center mb-12">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-6 backdrop-blur-md">
-                        <Lock size={12} className="text-blue-400" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Secure Legal Onboarding v1.2</span>
+            {/* Background decorations */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
+                <div className="absolute bottom-[10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+            </div>
+
+            <main className="flex-1 flex flex-col xl:flex-row relative z-10 pt-20">
+
+                {/* Left side value proposition & progress */}
+                <div className="w-full xl:w-5/12 p-8 xl:p-16 flex flex-col border-b xl:border-b-0 xl:border-r border-border bg-card/30 backdrop-blur-xl">
+                    <div className="max-w-xl mx-auto xl:mx-0 flex-1 flex flex-col">
+                        <div className="mb-10">
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-6">
+                                <Lock size={12} className="text-primary" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Secure Client Onboarding</span>
+                            </div>
+                            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground mb-6">
+                                Initialize <span className="text-primary">Workspace</span>
+                            </h1>
+                            <p className="text-lg text-muted-foreground leading-relaxed">
+                                Configure your legal environment. This brief setup ensures we align our services to your exact needs.
+                            </p>
+                        </div>
+
+                        {/* Vertical Progress (Desktop) */}
+                        <div className="mt-8 space-y-6 hidden xl:block">
+                            {STEPS.map((s, i) => (
+                                <div key={i} className={`flex items-start gap-4 transition-all duration-300 ${step === i ? 'opacity-100' : step > i ? 'opacity-60' : 'opacity-30'}`}>
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border transition-all duration-500 ${step === i ? 'bg-primary border-primary text-primary-foreground shadow-[0_0_15px_rgba(201,162,77,0.3)] scale-110' : step > i ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-card border-border text-muted-foreground shadow-neumorph-inset'}`}>
+                                        <s.icon size={20} />
+                                    </div>
+                                    <div className="pt-1">
+                                        <h3 className={`font-semibold ${step === i ? 'text-foreground' : 'text-muted-foreground'}`}>Step 0{i + 1}: {s.title}</h3>
+                                        <p className="text-sm text-muted-foreground mt-1">{s.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-black text-white italic uppercase tracking-tighter leading-none mb-4">
-                        Initialize <span className="text-blue-500">Workspace</span>
-                    </h1>
-                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Phased Configuration • Identity Alignment</p>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="flex justify-between items-center mb-16 px-4">
-                    {STEPS.map((s, i) => (
-                        <div key={i} className="flex flex-col items-center relative group">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 ${step === i ? 'bg-blue-600 border-blue-400 text-white shadow-xl shadow-blue-600/30 scale-110' :
-                                step > i ? 'bg-green-500/20 border-green-500/40 text-green-400' :
-                                    'bg-white/5 border-white/5 text-slate-600'
-                                }`}>
-                                <s.icon size={20} />
-                            </div>
-                            <span className={`absolute -bottom-7 text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${step === i ? 'text-blue-400 opacity-100' : 'text-slate-700 opacity-50'
-                                }`}>
-                                {s.title}
-                            </span>
-                            {i < STEPS.length - 1 && (
-                                <div className={`absolute top-1/2 left-[calc(100%+8px)] w-[calc(100%+32px)] h-0.5 -translate-y-1/2 rounded-full hidden md:block ${step > i ? 'bg-green-500/30' : 'bg-white/5'
-                                    }`} />
+                {/* Right Form Section */}
+                <div className="w-full xl:w-7/12 p-8 xl:p-16 flex flex-col justify-center overflow-y-auto">
+                    <div className="max-w-2xl mx-auto w-full">
+
+                        {/* Mobile Progress Bar (Horizontal) */}
+                        <div className="xl:hidden flex justify-between items-center mb-10 px-2">
+                            {STEPS.map((s, i) => (
+                                <div key={i} className="flex flex-col items-center relative group">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-500 ${step === i ? 'bg-primary border-primary text-primary-foreground shadow-[0_0_10px_rgba(201,162,77,0.3)] scale-110' : step > i ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-card border-border text-muted-foreground shadow-neumorph-inset'}`}>
+                                        <s.icon size={16} />
+                                    </div>
+                                    <span className={`absolute -bottom-6 text-[9px] font-bold uppercase tracking-wider whitespace-nowrap transition-all ${step === i ? 'text-primary opacity-100' : 'text-muted-foreground opacity-50'}`}>
+                                        {s.title}
+                                    </span>
+                                    {i < STEPS.length - 1 && (
+                                        <div className={`absolute top-1/2 left-[calc(100%+8px)] w-[calc(100%+8px)] sm:w-[calc(100%+24px)] h-0.5 -translate-y-1/2 rounded-full hidden xs:block ${step > i ? 'bg-primary/30' : 'bg-border'}`} />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Active Step Card */}
+                        <div className="bg-card border border-border p-6 sm:p-10 min-h-[450px] flex flex-col justify-between rounded-[2rem] shadow-neumorph relative overflow-hidden">
+                            {error && (
+                                <div className="mb-8 p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl text-sm font-semibold flex items-center gap-3 animate-fade-in shadow-neumorph-inset">
+                                    <AlertCircle size={18} />
+                                    {error}
+                                </div>
                             )}
-                        </div>
-                    ))}
-                </div>
 
-                {/* Step Container */}
-                <div className="glass-card border border-white/10 p-8 md:p-12 min-h-[450px] flex flex-col justify-between rounded-[2.5rem] bg-gradient-to-br from-white/[0.04] to-transparent shadow-2xl transition-all">
-
-                    {error && (
-                        <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl text-xs font-bold flex items-center gap-3">
-                            <Shield size={16} /> {error}
-                        </div>
-                    )}
-
-                    {/* STEP 1: PERSONA */}
-                    {step === 0 && (
-                        <div>
-                            <div className="mb-10">
-                                <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Who are you representing?</h2>
-                                <p className="text-slate-500 text-sm font-medium tracking-tight">Identity classification helps us tailor the legal environment.</p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {[
-                                    { id: 'individual', label: 'Individual', icon: User, desc: 'Personal legal matters' },
-                                    { id: 'business', label: 'Business owner', icon: Briefcase, desc: 'Corporate & SME affairs' },
-                                    { id: 'organisation_rep', label: 'Organization', icon: Globe, desc: 'NGOs & Enterprise' }
-                                ].map(persona => (
-                                    <button
-                                        key={persona.id}
-                                        onClick={() => setFormData({ ...formData, personaType: persona.id })}
-                                        className={`p-6 rounded-3xl border text-left transition-all group ${formData.personaType === persona.id
-                                            ? 'bg-blue-600 border-blue-400 shadow-xl shadow-blue-600/20'
-                                            : 'bg-white/5 border-white/5 hover:border-white/20'
-                                            }`}
-                                    >
-                                        <div className={`mb-4 w-12 h-12 rounded-xl flex items-center justify-center transition-all ${formData.personaType === persona.id ? 'bg-white text-blue-600' : 'bg-slate-800 text-slate-400'
-                                            }`}>
-                                            <persona.icon size={24} />
-                                        </div>
-                                        <h3 className={`font-black uppercase tracking-widest text-xs mb-2 transition-all ${formData.personaType === persona.id ? 'text-white' : 'text-slate-300'
-                                            }`}>{persona.label}</h3>
-                                        <p className={`text-[10px] leading-relaxed transition-all ${formData.personaType === persona.id ? 'text-blue-100' : 'text-slate-500'
-                                            }`}>{persona.desc}</p>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* STEP 2: INTENT */}
-                    {step === 1 && (
-                        <div>
-                            <div className="mb-10">
-                                <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">What is your primary goal?</h2>
-                                <p className="text-slate-500 text-sm font-medium tracking-tight">Select all that apply to your current situation.</p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {[
-                                    'Report a legal issue',
-                                    'Track an ongoing case',
-                                    'Consult a legal professional',
-                                    'Upload or manage documents',
-                                    'Just exploring'
-                                ].map(goal => (
-                                    <button
-                                        key={goal}
-                                        onClick={() => toggleGoal(goal)}
-                                        className={`p-5 rounded-2xl border flex items-center justify-between transition-all ${formData.primaryGoals.includes(goal)
-                                            ? 'bg-blue-600 border-blue-400 text-white'
-                                            : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'
-                                            }`}
-                                    >
-                                        <span className="text-xs font-black uppercase tracking-widest">{goal}</span>
-                                        {formData.primaryGoals.includes(goal) ? (
-                                            <CheckCircle2 size={18} />
-                                        ) : (
-                                            <div className="w-4 h-4 rounded-full border border-white/10" />
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* STEP 3: URGENCY & SOURCE */}
-                    {step === 2 && (
-                        <div>
-                            <div className="mb-10">
-                                <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Timeline & Insight</h2>
-                                <p className="text-slate-500 text-sm font-medium tracking-tight">Help us prioritize your case priority in the workspace.</p>
-                            </div>
-                            <div className="space-y-8">
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 block">Urgency Classification</label>
-                                    <div className="flex gap-2">
+                            {/* STEP 1: PERSONA */}
+                            {step === 0 && (
+                                <div className="animate-fade-in">
+                                    <div className="mb-8 border-b border-border pb-6">
+                                        <h2 className="text-2xl font-bold mb-2">Who are you representing?</h2>
+                                        <p className="text-muted-foreground text-sm">Identity classification helps us tailor the legal environment.</p>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         {[
-                                            { id: 'urgent', label: 'CRITICAL', color: 'bg-red-500' },
-                                            { id: 'soon', label: 'ELEVATED', color: 'bg-orange-500' },
-                                            { id: 'researching', label: 'ROUTINE', color: 'bg-blue-500' }
-                                        ].map(opt => (
+                                            { id: 'individual', label: 'Individual', icon: User, desc: 'Personal legal matters' },
+                                            { id: 'business', label: 'Business Owner', icon: Briefcase, desc: 'Corporate & SME affairs' },
+                                            { id: 'organisation_rep', label: 'Organization', icon: Globe, desc: 'NGOs & Enterprise' }
+                                        ].map(persona => (
                                             <button
-                                                key={opt.id}
-                                                onClick={() => setFormData({ ...formData, urgencyLevel: opt.id })}
-                                                className={`flex-1 py-4 rounded-2xl border transition-all text-[10px] font-black tracking-widest ${formData.urgencyLevel === opt.id
-                                                    ? `${opt.color} border-transparent text-white shadow-lg`
-                                                    : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10'
+                                                key={persona.id}
+                                                onClick={() => setFormData({ ...formData, personaType: persona.id })}
+                                                className={`p-6 rounded-2xl border text-left transition-all group ${formData.personaType === persona.id
+                                                    ? 'bg-primary/10 border-primary text-foreground shadow-[0_0_15px_rgba(201,162,77,0.15)]'
+                                                    : 'bg-input border-border hover:border-primary/50 text-muted-foreground shadow-neumorph-inset'
                                                     }`}
                                             >
-                                                {opt.label}
+                                                <div className={`mb-4 w-12 h-12 rounded-xl flex items-center justify-center transition-all ${formData.personaType === persona.id ? 'bg-primary text-primary-foreground shadow-lg' : 'bg-card text-muted-foreground shadow-sm border border-border'}`}>
+                                                    <persona.icon size={24} />
+                                                </div>
+                                                <h3 className={`font-bold tracking-tight text-sm mb-2 transition-colors ${formData.personaType === persona.id ? 'text-primary' : 'text-foreground'}`}>{persona.label}</h3>
+                                                <p className="text-xs leading-relaxed opacity-80">{persona.desc}</p>
                                             </button>
                                         ))}
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 block">How did you find us?</label>
-                                    <input
-                                        name="referralSource"
-                                        value={formData.referralSource}
-                                        onChange={e => setFormData({ ...formData, referralSource: e.target.value })}
-                                        placeholder="Referral Source (Optional)"
-                                        className="w-full bg-[#0F172A] border border-white/5 rounded-2xl py-5 px-6 text-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-bold placeholder:text-slate-800 text-sm mb-0"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                            )}
 
-                    {/* STEP 4: VERIFICATION (PREMIUM SCAN) */}
-                    {step === 3 && (
-                        <div className="flex flex-col items-center justify-center text-center py-6">
-                            {!verifying ? (
-                                <>
-                                    <div className="w-20 h-20 bg-blue-600/20 rounded-[2rem] flex items-center justify-center text-blue-400 mb-8 border border-blue-600/30">
-                                        <ShieldCheck size={40} />
+                            {/* STEP 2: INTENT */}
+                            {step === 1 && (
+                                <div className="animate-fade-in">
+                                    <div className="mb-8 border-b border-border pb-6">
+                                        <h2 className="text-2xl font-bold mb-2">What is your primary goal?</h2>
+                                        <p className="text-muted-foreground text-sm">Select all that apply to your current situation.</p>
                                     </div>
-                                    <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-3">Integrity Verification</h2>
-                                    <p className="text-slate-500 text-sm max-w-sm font-medium tracking-tight mb-8">
-                                        By proceeding, you agree to our terms of legal service and authorize initialization of your secure workspace.
-                                    </p>
-                                    <div className="flex flex-col gap-3 w-full max-w-xs">
-                                        <div className="flex items-center gap-3 py-3 px-5 rounded-2xl bg-white/[0.03] border border-white/5 text-left">
-                                            <Lock size={14} className="text-blue-500" />
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">End-to-End Encryption</span>
-                                        </div>
-                                        <div className="flex items-center gap-3 py-3 px-5 rounded-2xl bg-white/[0.03] border border-white/5 text-left">
-                                            <Eye size={14} className="text-blue-500" />
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identity Isolation Active</span>
-                                        </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {[
+                                            'Report a legal issue',
+                                            'Track an ongoing case',
+                                            'Consult a legal professional',
+                                            'Upload or manage documents',
+                                            'Just exploring'
+                                        ].map(goal => (
+                                            <button
+                                                key={goal}
+                                                onClick={() => toggleGoal(goal)}
+                                                className={`p-5 text-left rounded-2xl border flex items-center justify-between transition-all group ${formData.primaryGoals.includes(goal)
+                                                    ? 'bg-primary/10 border-primary text-foreground shadow-[0_0_15px_rgba(201,162,77,0.15)]'
+                                                    : 'bg-input border-border hover:border-primary/50 text-muted-foreground shadow-neumorph-inset'
+                                                    }`}
+                                            >
+                                                <span className={`text-sm font-semibold transition-colors ${formData.primaryGoals.includes(goal) ? 'text-primary' : 'text-foreground'}`}>{goal}</span>
+                                                {formData.primaryGoals.includes(goal) ? (
+                                                    <CheckCircle2 size={18} className="text-primary shrink-0" />
+                                                ) : (
+                                                    <div className="w-[18px] h-[18px] rounded-full border-2 border-border shrink-0" />
+                                                )}
+                                            </button>
+                                        ))}
                                     </div>
-                                </>
-                            ) : (
-                                <div className="w-full flex flex-col items-center">
-                                    <div className="relative w-32 h-32 mb-10">
-                                        <div className="absolute inset-0 rounded-[2.5rem] border-4 border-blue-600/20"></div>
-                                        <div
-                                            className="absolute inset-0 rounded-[2.5rem] border-4 border-blue-500 transition-all duration-300 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
-                                            style={{ clipPath: `inset(${100 - verifyProgress}% 0 0 0)` }}
-                                        ></div>
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <Loader2 size={32} className="text-blue-500 animate-spin" />
-                                        </div>
-                                    </div>
-                                    <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Analyzing Profile</h2>
-                                    <div className="flex items-center gap-4 w-full max-w-xs">
-                                        <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-blue-600 transition-all duration-300"
-                                                style={{ width: `${verifyProgress}%` }}
-                                            />
-                                        </div>
-                                        <span className="text-[10px] font-black text-blue-400 font-mono">{Math.round(verifyProgress)}%</span>
-                                    </div>
-                                    <p className="text-slate-600 text-[10px] font-black uppercase tracking-[0.3em] mt-8 text-center animate-pulse">
-                                        Encrypting Metadata • SEC-256 Alignment
-                                    </p>
                                 </div>
                             )}
+
+                            {/* STEP 3: URGENCY & SOURCE */}
+                            {step === 2 && (
+                                <div className="animate-fade-in">
+                                    <div className="mb-8 border-b border-border pb-6">
+                                        <h2 className="text-2xl font-bold mb-2">Timeline & Insight</h2>
+                                        <p className="text-muted-foreground text-sm">Help us prioritize your case priority in the workspace.</p>
+                                    </div>
+                                    <div className="space-y-8">
+                                        <div>
+                                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4 block">Urgency Classification</label>
+                                            <div className="grid grid-cols-3 gap-3">
+                                                {[
+                                                    { id: 'urgent', label: 'CRITICAL', ring: 'focus:ring-red-500/50', activeBg: 'bg-red-500/20 text-red-500 border-red-500/50' },
+                                                    { id: 'soon', label: 'ELEVATED', ring: 'focus:ring-orange-500/50', activeBg: 'bg-orange-500/20 text-orange-500 border-orange-500/50' },
+                                                    { id: 'researching', label: 'ROUTINE', ring: 'focus:ring-blue-500/50', activeBg: 'bg-blue-500/20 text-blue-500 border-blue-500/50' }
+                                                ].map(opt => (
+                                                    <button
+                                                        key={opt.id}
+                                                        onClick={() => setFormData({ ...formData, urgencyLevel: opt.id })}
+                                                        className={`py-4 rounded-xl border transition-all text-[10px] sm:text-xs font-bold tracking-wider uppercase flex items-center justify-center text-center ${formData.urgencyLevel === opt.id
+                                                            ? `${opt.activeBg} shadow-inner`
+                                                            : 'bg-input border-border text-muted-foreground hover:bg-card shadow-neumorph-inset'
+                                                            }`}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4 block">How did you find us?</label>
+                                            <input
+                                                name="referralSource"
+                                                value={formData.referralSource}
+                                                onChange={e => setFormData({ ...formData, referralSource: e.target.value })}
+                                                placeholder="Referral Source (Optional)"
+                                                className="w-full bg-input border border-border rounded-[var(--radius-neumorph)] py-4 px-6 text-foreground focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-semibold shadow-neumorph-inset"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* STEP 4: VERIFICATION (PREMIUM SCAN) */}
+                            {step === 3 && (
+                                <div className="flex flex-col items-center justify-center text-center py-6 animate-fade-in relative z-10">
+                                    {!verifying ? (
+                                        <>
+                                            <div className="w-24 h-24 bg-card rounded-full flex items-center justify-center text-primary mb-8 border border-border shadow-neumorph-inset relative">
+                                                <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse"></div>
+                                                <ShieldCheck size={40} className="relative z-10" />
+                                            </div>
+                                            <h2 className="text-3xl font-bold tracking-tight text-foreground mb-4">Integrity Verification</h2>
+                                            <p className="text-muted-foreground text-sm max-w-sm mb-10 leading-relaxed">
+                                                By proceeding, you agree to our terms of legal service and authorize initialization of your secure workspace.
+                                            </p>
+                                            <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
+                                                <div className="flex items-center gap-4 py-4 px-6 rounded-xl bg-card border border-border text-left shadow-sm">
+                                                    <Lock size={18} className="text-primary shrink-0" />
+                                                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End-to-End Encryption</span>
+                                                </div>
+                                                <div className="flex items-center gap-4 py-4 px-6 rounded-xl bg-card border border-border text-left shadow-sm">
+                                                    <Eye size={18} className="text-primary shrink-0" />
+                                                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Identity Isolation Active</span>
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="w-full flex flex-col items-center">
+                                            <div className="relative w-32 h-32 mb-10">
+                                                <div className="absolute inset-0 rounded-full border-[6px] border-border shadow-neumorph-inset"></div>
+                                                <div
+                                                    className="absolute inset-0 rounded-full border-[6px] border-primary transition-all duration-300 shadow-[0_0_20px_rgba(201,162,77,0.5)]"
+                                                    style={{ clipPath: `inset(${100 - verifyProgress}% 0 0 0)` }}
+                                                ></div>
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <Loader2 size={36} className="text-primary animate-spin" />
+                                                </div>
+                                            </div>
+                                            <h2 className="text-2xl font-bold tracking-tight text-foreground mb-4">Analyzing Profile</h2>
+                                            <div className="flex items-center gap-4 w-full max-w-xs">
+                                                <div className="flex-1 h-2 bg-input rounded-full overflow-hidden shadow-neumorph-inset">
+                                                    <div
+                                                        className="h-full bg-primary transition-all duration-300 relative overflow-hidden"
+                                                        style={{ width: `${verifyProgress}%` }}
+                                                    >
+                                                        <div className="absolute inset-0 bg-white/30 backdrop-blur-sm -translate-x-full animate-[shimmer_2s_infinite]"></div>
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs font-bold text-primary font-mono">{Math.round(verifyProgress)}%</span>
+                                            </div>
+                                            <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-[0.2em] mt-8 text-center animate-pulse">
+                                                Encrypting Metadata • SEC-256 Alignment
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Navigation Buttons */}
+                            <div className="pt-10 border-t border-border flex gap-4 mt-8">
+                                {step > 0 && !verifying && (
+                                    <button
+                                        onClick={prevStep}
+                                        className="px-6 py-4 rounded-[var(--radius-neumorph)] bg-card border border-border text-muted-foreground hover:text-foreground transition-all text-xs font-bold uppercase tracking-wider flex items-center gap-2 group shadow-sm hover:shadow-neumorph"
+                                    >
+                                        <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                                        Back
+                                    </button>
+                                )}
+
+                                {step < STEPS.length - 1 ? (
+                                    <button
+                                        onClick={nextStep}
+                                        disabled={
+                                            (step === 0 && !formData.personaType) ||
+                                            (step === 1 && formData.primaryGoals.length === 0) ||
+                                            (step === 2 && !formData.urgencyLevel)
+                                        }
+                                        className="flex-1 py-4 bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground rounded-[var(--radius-neumorph)] shadow-[0_0_15px_rgba(201,162,77,0.3)] transition-all scale-100 active:scale-95 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-3 group"
+                                    >
+                                        Continue Phasing
+                                        <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={handleVerification}
+                                        disabled={verifying || loading}
+                                        className="flex-1 py-4 bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground rounded-[var(--radius-neumorph)] shadow-[0_0_20px_rgba(201,162,77,0.4)] transition-all scale-100 active:scale-95 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-3 group bg-gradient-to-r from-primary to-primary/80"
+                                    >
+                                        {verifying ? 'Verifying...' : 'Initialize Workspace'}
+                                        {!verifying && <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    )}
 
-                    {/* Navigation Buttons */}
-                    <div className="pt-12 border-t border-white/5 flex gap-4 mt-auto">
-                        {step > 0 && !verifying && (
-                            <button
-                                onClick={prevStep}
-                                className="px-8 py-4 rounded-2xl bg-white/5 border border-white/5 text-slate-500 hover:text-white transition-all text-xs font-black uppercase tracking-widest flex items-center gap-2 group"
-                            >
-                                <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                                Back
-                            </button>
-                        )}
-
-                        {step < STEPS.length - 1 ? (
-                            <button
-                                onClick={nextStep}
-                                disabled={
-                                    (step === 0 && !formData.personaType) ||
-                                    (step === 1 && formData.primaryGoals.length === 0) ||
-                                    (step === 2 && !formData.urgencyLevel)
-                                }
-                                className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-20 disabled:grayscale text-white rounded-2xl shadow-xl shadow-blue-600/20 shadow-blue-600 transition-all scale-100 hover:scale-[1.02] active:scale-[0.98] text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 group"
-                            >
-                                Continue Phasing
-                                <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                            </button>
-                        ) : (
-                            <button
-                                onClick={handleVerification}
-                                disabled={verifying || loading}
-                                className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl shadow-2xl shadow-blue-600/30 transition-all scale-100 hover:scale-[1.02] active:scale-[0.98] text-xs font-black uppercase tracking-[0.3em] flex items-center justify-center gap-3 group"
-                            >
-                                {verifying ? 'Verifying Integrity...' : 'Initialize Workspace'}
-                                {!verifying && <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />}
-                            </button>
-                        )}
                     </div>
                 </div>
-
-                <p className="text-center mt-8 text-[9px] font-black text-slate-700 uppercase tracking-[0.4em]">
-                    Canonical Legal Orchestration Engine • CaseBridge Infrastructure
-                </p>
-            </div>
+            </main>
         </div>
     );
 }
 
-const STEPS = [
-    { title: 'Identity', icon: User },
-    { title: 'Alignment', icon: Briefcase },
-    { title: 'Priority', icon: Clock },
-    { title: 'Workspace', icon: ShieldCheck }
-];

@@ -9,10 +9,13 @@ import {
     Phone, Globe, Video, Building2
 } from 'lucide-react';
 import InternalSidebar from '@/components/layout/InternalSidebar';
+import { useToast } from '@/components/common/ToastService';
+import Skeleton from '@/components/ui/Skeleton';
 
 export default function ProfileSettings() {
     const { session } = useInternalSession();
     const queryClient = useQueryClient();
+    const { toast } = useToast();
 
     // Editable state
     const [calendlyUrl, setCalendlyUrl] = useState('');
@@ -79,7 +82,7 @@ export default function ProfileSettings() {
             });
             if (error) throw error;
         } catch (err: any) {
-            alert(`Error connecting to ${provider}: ${err.message}`);
+            toast(`Error connecting to ${provider}: ${err.message}`, 'error');
         }
     };
 
@@ -98,11 +101,25 @@ export default function ProfileSettings() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['my_profile', session?.user_id] });
-            alert('Operational settings synchronized successfully.');
+            toast('Operational settings synchronized successfully.', 'success');
         }
     });
 
-    if (isLoading) return <div className="min-h-screen bg-[#0F172A] flex items-center justify-center"><Loader2 className="animate-spin text-indigo-500" /></div>;
+    if (isLoading) return (
+        <div className="min-h-screen bg-[#0F172A] text-white">
+            <InternalSidebar />
+            <div className="ml-64 p-12 max-w-4xl animate-in fade-in duration-500">
+                <div className="mb-12">
+                    <Skeleton className="h-10 w-64 mb-2" />
+                    <Skeleton className="h-6 w-96" />
+                </div>
+                <div className="space-y-8">
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-[#0F172A] text-white">

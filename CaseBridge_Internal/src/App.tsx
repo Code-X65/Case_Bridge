@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ToastProvider } from './components/common/ToastService';
+import { ConfirmDialogProvider } from './components/common/ConfirmDialogProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Auth Pages
@@ -10,6 +12,9 @@ import FirstLoginWelcome from './pages/auth/FirstLoginWelcome';
 import UnauthorizedPage from './pages/auth/UnauthorizedPage';
 import LockedAccountPage from './pages/auth/LockedAccountPage';
 import AcceptInvitePage from './pages/auth/AcceptInvitePage';
+import UpdatePasswordPage from './pages/auth/UpdatePasswordPage';
+import ClientUpdatePasswordPage from './pages/client/ClientUpdatePasswordPage';
+import SessionExpiryWarning from './components/auth/SessionExpiryWarning';
 import FirmSettingsPage from './pages/internal/FirmSettingsPage';
 import AuditLogsPage from './pages/internal/AuditLogsPage';
 import SubscriptionPlansPage from './pages/internal/SubscriptionPlansPage';
@@ -21,6 +26,8 @@ import IntakeDashboard from './pages/internal/intake/IntakeDashboard';
 import IntakeReview from './pages/internal/intake/IntakeReview';
 import ClientBehaviorPage from './pages/internal/case-manager/ClientBehaviorPage';
 import ReportingDashboard from './pages/internal/ReportingDashboard';
+import MyManagedMatters from './pages/internal/case_manager/MyManagedMatters';
+import ApprovalQueuePage from './pages/internal/ApprovalQueuePage';
 
 import MyMattersPage from './pages/internal/MyMattersPage';
 import MyTasksPage from './pages/internal/MyTasksPage';
@@ -39,79 +46,88 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          {/* Client Portal Routes */}
-          <Route path="/client/login" element={<ClientLoginPage />} />
-          <Route path="/client/dashboard" element={<ClientDashboard />} />
+      <ToastProvider>
+        <ConfirmDialogProvider>
+          <BrowserRouter>
+            <SessionExpiryWarning />
+            <Routes>
+              {/* Client Portal Routes */}
+              <Route path="/client/login" element={<ClientLoginPage />} />
+              <Route path="/client/dashboard" element={<ClientDashboard />} />
 
-          {/* Public Routes */}
-          <Route path="/" element={<InternalLandingPage />} />
-          <Route path="/internal/login" element={<InternalLoginPage />} />
-          <Route path="/internal/register-firm" element={<RegisterFirmPage />} />
-          <Route path="/auth/confirm" element={<EmailConfirmPage />} />
-          <Route path="/auth/accept-invite" element={<AcceptInvitePage />} />
+              {/* Public Routes */}
+              <Route path="/" element={<InternalLandingPage />} />
+              <Route path="/internal/login" element={<InternalLoginPage />} />
+              <Route path="/internal/register-firm" element={<RegisterFirmPage />} />
+              <Route path="/auth/confirm" element={<EmailConfirmPage />} />
+              <Route path="/auth/accept-invite" element={<AcceptInvitePage />} />
+              <Route path="/auth/update-password" element={<UpdatePasswordPage />} />
+              <Route path="/client/update-password" element={<ClientUpdatePasswordPage />} />
 
-          {/* Security & Onboarding Routes */}
-          <Route path="/auth/welcome" element={<ProtectedRoute><FirstLoginWelcome /></ProtectedRoute>} />
-          <Route path="/auth/unauthorized" element={<UnauthorizedPage />} />
-          <Route path="/auth/locked" element={<LockedAccountPage />} />
+              {/* Security & Onboarding Routes */}
+              <Route path="/auth/welcome" element={<ProtectedRoute><FirstLoginWelcome /></ProtectedRoute>} />
+              <Route path="/auth/unauthorized" element={<UnauthorizedPage />} />
+              <Route path="/auth/locked" element={<LockedAccountPage />} />
 
 
-          {/* Protected Internal Routes */}
-          <Route
-            path="/internal/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardDispatcher />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/internal/case-manager/dashboard" element={<ProtectedRoute><DashboardDispatcher /></ProtectedRoute>} />
-          <Route path="/internal/associate/dashboard" element={<ProtectedRoute><DashboardDispatcher /></ProtectedRoute>} />
+              {/* Protected Internal Routes */}
+              <Route
+                path="/internal/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardDispatcher />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/internal/case-manager/dashboard" element={<ProtectedRoute><DashboardDispatcher /></ProtectedRoute>} />
+              <Route path="/internal/associate/dashboard" element={<ProtectedRoute><DashboardDispatcher /></ProtectedRoute>} />
 
-          {/* Unify Admin & Case Manager Routes (Admin has super-set) */}
-          <Route path="/internal/intake" element={<ProtectedRoute><IntakeDashboard /></ProtectedRoute>} />
-          <Route path="/intake" element={<ProtectedRoute><IntakeDashboard /></ProtectedRoute>} /> {/* Alias */}
-          <Route path="/intake/:id" element={<ProtectedRoute><IntakeReview /></ProtectedRoute>} />
-          <Route path="/internal/intake/:id" element={<ProtectedRoute><IntakeReview /></ProtectedRoute>} />
+              {/* Unify Admin & Case Manager Routes (Admin has super-set) */}
+              <Route path="/internal/intake" element={<ProtectedRoute><IntakeDashboard /></ProtectedRoute>} />
+              <Route path="/intake" element={<ProtectedRoute><IntakeDashboard /></ProtectedRoute>} /> {/* Alias */}
+              <Route path="/intake/:id" element={<ProtectedRoute><IntakeReview /></ProtectedRoute>} />
+              <Route path="/internal/intake/:id" element={<ProtectedRoute><IntakeReview /></ProtectedRoute>} />
 
-          <Route path="/internal/matters" element={<ProtectedRoute><MatterManagementPage /></ProtectedRoute>} />
-          <Route path="/internal/clients" element={<ProtectedRoute><ClientBehaviorPage /></ProtectedRoute>} />
-          <Route path="/internal/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
-          <Route path="/internal/calendar" element={<ProtectedRoute><InternalCalendar /></ProtectedRoute>} />
-          <Route path="/internal/schedule" element={<ProtectedRoute><InternalSchedulePage /></ProtectedRoute>} />
-          <Route path="/internal/reports" element={<ProtectedRoute><ReportingDashboard /></ProtectedRoute>} />
+              <Route path="/internal/matters" element={<ProtectedRoute><MatterManagementPage /></ProtectedRoute>} />
+              <Route path="/internal/clients" element={<ProtectedRoute><ClientBehaviorPage /></ProtectedRoute>} />
+              <Route path="/internal/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
+              <Route path="/internal/calendar" element={<ProtectedRoute><InternalCalendar /></ProtectedRoute>} />
+              <Route path="/internal/schedule" element={<ProtectedRoute><InternalSchedulePage /></ProtectedRoute>} />
+              <Route path="/internal/reports" element={<ProtectedRoute><ReportingDashboard /></ProtectedRoute>} />
 
-          <Route path="/internal/staff" element={<ProtectedRoute><StaffManagementPage /></ProtectedRoute>} />
-          <Route path="/internal/staff-management" element={<ProtectedRoute><StaffManagementPage /></ProtectedRoute>} /> {/* Alias */}
+              <Route path="/internal/staff" element={<ProtectedRoute><StaffManagementPage /></ProtectedRoute>} />
+              <Route path="/internal/staff-management" element={<ProtectedRoute><StaffManagementPage /></ProtectedRoute>} /> {/* Alias */}
 
-          {/* Legacy / Specialized Routes */}
-          <Route path="/internal/case-manager/matters" element={<ProtectedRoute><MatterManagementPage /></ProtectedRoute>} />
-          <Route path="/internal/case-manager/clients" element={<ProtectedRoute><ClientBehaviorPage /></ProtectedRoute>} />
-          <Route path="/internal/case-manager/calendar" element={<ProtectedRoute><InternalCalendar /></ProtectedRoute>} />
-          <Route path="/internal/case-manager/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
+              {/* Legacy / Specialized Routes */}
+              <Route path="/internal/case-manager/matters" element={<ProtectedRoute><MatterManagementPage /></ProtectedRoute>} />
+              <Route path="/internal/case-manager/clients" element={<ProtectedRoute><ClientBehaviorPage /></ProtectedRoute>} />
+              <Route path="/internal/case-manager/calendar" element={<ProtectedRoute><InternalCalendar /></ProtectedRoute>} />
+              <Route path="/internal/case-manager/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
 
-          {/* Associate Routes */}
-          <Route path="/internal/associate/matters" element={<ProtectedRoute><MyMattersPage /></ProtectedRoute>} />
-          <Route path="/internal/associate/tasks" element={<ProtectedRoute><MyTasksPage /></ProtectedRoute>} />
-          <Route path="/internal/associate/schedule" element={<ProtectedRoute><InternalSchedulePage /></ProtectedRoute>} />
-          <Route path="/internal/associate/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
+              {/* Associate Routes */}
+              <Route path="/internal/associate/matters" element={<ProtectedRoute><MyMattersPage /></ProtectedRoute>} />
+              <Route path="/internal/associate/tasks" element={<ProtectedRoute><MyTasksPage /></ProtectedRoute>} />
+              <Route path="/internal/associate/schedule" element={<ProtectedRoute><InternalSchedulePage /></ProtectedRoute>} />
+              <Route path="/internal/associate/documents" element={<ProtectedRoute><InternalDocumentVault /></ProtectedRoute>} />
 
-          <Route path="/internal/case-manager/tasks" element={<ProtectedRoute><MyTasksPage /></ProtectedRoute>} />
+              <Route path="/internal/case-manager/tasks" element={<ProtectedRoute><MyTasksPage /></ProtectedRoute>} />
 
-          {/* System Pages */}
-          <Route path="/internal/firm-profile" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} />
-          <Route path="/internal/billing" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} /> {/* Temporary redirect or common hub */}
-          <Route path="/internal/settings" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} />
-          <Route path="/internal/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
-          <Route path="/internal/audit-logs" element={<ProtectedRoute><AuditLogsPage /></ProtectedRoute>} />
-          <Route path="/internal/subscription-plans" element={<ProtectedRoute><SubscriptionPlansPage /></ProtectedRoute>} />
-          <Route path="/internal/security" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} />
-          <Route path="/internal/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-          <Route path="/internal/matter/:id" element={<ProtectedRoute><MatterWorkspace /></ProtectedRoute>} />
-        </Routes>
-      </BrowserRouter>
+              {/* System Pages */}
+              <Route path="/internal/firm-profile" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} />
+              <Route path="/internal/billing" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} /> {/* Temporary redirect or common hub */}
+              <Route path="/internal/settings" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} />
+              <Route path="/internal/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
+              <Route path="/internal/audit-logs" element={<ProtectedRoute><AuditLogsPage /></ProtectedRoute>} />
+              <Route path="/internal/subscription-plans" element={<ProtectedRoute><SubscriptionPlansPage /></ProtectedRoute>} />
+              <Route path="/internal/security" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} />
+              <Route path="/internal/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+              <Route path="/internal/approval-queue" element={<ProtectedRoute><ApprovalQueuePage /></ProtectedRoute>} />
+              <Route path="/internal/managed-matters" element={<ProtectedRoute><MyManagedMatters /></ProtectedRoute>} />
+              <Route path="/internal/matter/:id" element={<ProtectedRoute><MatterWorkspace /></ProtectedRoute>} />
+            </Routes>
+          </BrowserRouter>
+        </ConfirmDialogProvider>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

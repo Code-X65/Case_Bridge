@@ -5,11 +5,13 @@ import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Briefcase, Plus, Search, X, UserPlus, FileText, Check, ExternalLink } from 'lucide-react';
 import InternalSidebar from '@/components/layout/InternalSidebar';
+import { useToast } from '@/components/common/ToastService';
 
 export default function MatterManagementPage() {
     const { session } = useInternalSession();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const { toast } = useToast();
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [newMatter, setNewMatter] = useState({ title: '', description: '' });
@@ -18,7 +20,12 @@ export default function MatterManagementPage() {
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [selectedMatter, setSelectedMatter] = useState<string | null>(null);
     const [selectedAssociate, setSelectedAssociate] = useState('');
+    const [selectedCaseManager, setSelectedCaseManager] = useState('');
     const [clientEmail, setClientEmail] = useState('');
+    const [filterManagedByMe, setFilterManagedByMe] = useState(false);
+
+    const isAdminManager = session?.role === 'admin_manager' || session?.role === 'admin';
+    const isCaseManager = session?.role === 'case_manager' || isAdminManager;
 
     // Fetch Firm Matters
     const { data: matters, isLoading } = useQuery({
@@ -29,20 +36,25 @@ export default function MatterManagementPage() {
                 .from('matters')
                 .select(`
                     id, title, description, lifecycle_state, created_at, matter_number,
-                    assignee:assigned_associate ( id, full_name, email )
+                    assignee:assigned_associate ( id, full_name, email ),
+                    manager:assigned_case_manager ( id, full_name, email )
                 `)
                 .eq('firm_id', session!.firm_id)
                 .order('created_at', { ascending: false });
-            return data || [];
+
+            let filtered = data || [];
+            if (filterManagedByMe) {
+                filtered = filtered.filter((m: any) => m.assigned_case_manager === session?.user_id);
+            }
+            return filtered;
         }
     });
 
-    // Fetch Associates (for assignment)
-    const { data: associates } = useQuery({
-        queryKey: ['firm_associates', session?.firm_id],
+    // Fetch All Active Staff for assignment
+    const { data: staff } = useQuery({
+        queryKey: ['firm_staff', session?.firm_id],
         enabled: !!session?.firm_id,
         queryFn: async () => {
-            // Join user_firm_roles -> profiles
             const { data } = await supabase
                 .from('user_firm_roles')
                 .select(`
@@ -51,12 +63,14 @@ export default function MatterManagementPage() {
                     profile:profiles ( id, full_name, email )
                 `)
                 .eq('firm_id', session!.firm_id)
-                .in('role', ['associate', 'associate_lawyer'])
                 .eq('status', 'active');
 
-            return data?.map(r => r.profile) || []; // Flatten to just profiles
+            return data || [];
         }
     });
+
+    const associates = staff?.filter(r => ['associate', 'associate_lawyer'].includes(r.role)).map(r => r.profile) || [];
+    const caseManagers = staff?.filter(r => ['case_manager', 'admin', 'admin_manager'].includes(r.role)).map(r => r.profile) || [];
 
     // Create Matter Mutation
     const createMutation = useMutation({
@@ -85,7 +99,10 @@ export default function MatterManagementPage() {
             // update matter set assigned_associate = selectedAssociate
             const { error } = await supabase
                 .from('matters')
-                .update({ assigned_associate: selectedAssociate || null }) // allow unassigning
+                .update({
+                    assigned_associate: selectedAssociate || null,
+                    assigned_case_manager: selectedCaseManager || null
+                })
                 .eq('id', selectedMatter);
 
             if (error) throw error;
@@ -95,12 +112,15 @@ export default function MatterManagementPage() {
             setIsAssignOpen(false);
             setSelectedMatter(null);
             setSelectedAssociate('');
+            setSelectedCaseManager('');
         }
     });
 
-    const openAssignModal = (matterId: string, currentAssigneeId?: string) => {
+    const openAssignModal = (matterId: string, currentAssigneeId?: string, currentManagerId?: string) => {
+        if (!isAdminManager) return;
         setSelectedMatter(matterId);
         setSelectedAssociate(currentAssigneeId || '');
+        setSelectedCaseManager(currentManagerId || '');
         setIsAssignOpen(true);
     };
 
@@ -130,7 +150,7 @@ export default function MatterManagementPage() {
             setIsInviteOpen(false);
             setSelectedMatter(null);
             setClientEmail('');
-            alert('Client invite sent successfully (simulated email)');
+            toast('Client invite sent successfully (simulated email)', 'success');
         }
     });
 
@@ -153,7 +173,6 @@ export default function MatterManagementPage() {
                     </button>
                 </header>
 
-                {/* Filters & Search */}
                 <div className="flex items-center gap-4 mb-6">
                     <div className="relative flex-1 max-w-md">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -163,6 +182,17 @@ export default function MatterManagementPage() {
                             className="w-full bg-[#1E293B] border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-indigo-500"
                         />
                     </div>
+                    {isCaseManager && (
+                        <button
+                            onClick={() => setFilterManagedByMe(!filterManagedByMe)}
+                            className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 ${filterManagedByMe
+                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                : 'bg-[#1E293B] border-white/10 text-slate-400 hover:text-white'}`}
+                        >
+                            <Briefcase className="w-4 h-4" />
+                            {filterManagedByMe ? 'Showing Managed By Me' : 'Managed By Me'}
+                        </button>
+                    )}
                 </div>
 
                 {/* Matters Table */}
@@ -172,7 +202,7 @@ export default function MatterManagementPage() {
                             <tr>
                                 <th className="p-4 pl-6">Matter Name</th>
                                 <th className="p-4">Status</th>
-                                <th className="p-4">Assigned Associate</th>
+                                <th className="p-4">Staff Assignment</th>
                                 <th className="p-4">Created</th>
                                 <th className="p-4 text-right pr-6">Actions</th>
                             </tr>
@@ -219,19 +249,31 @@ export default function MatterManagementPage() {
                                                 {matter.lifecycle_state?.replace('_', ' ')}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-slate-300">
-                                            {matter.assignee ? (
-                                                <div className="flex items-center gap-2 text-xs font-medium text-slate-300 bg-white/5 px-2 py-1 rounded-lg w-fit">
-                                                    <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-[8px] font-bold text-white shadow-sm">
-                                                        {matter.assignee.full_name?.charAt(0)}
+                                        <td className="p-4">
+                                            <div className="flex flex-col gap-2">
+                                                {matter.assignee ? (
+                                                    <div className="flex items-center gap-2 text-[10px] font-medium text-slate-300 bg-white/5 px-2 py-1 rounded-lg w-fit">
+                                                        <span className="text-slate-500 font-bold uppercase tracking-tighter mr-1 border-r border-white/10 pr-2">Assoc</span>
+                                                        <div className="w-4 h-4 rounded-full bg-indigo-600 flex items-center justify-center text-[7px] font-bold text-white shadow-sm shrink-0">
+                                                            {matter.assignee.full_name?.charAt(0)}
+                                                        </div>
+                                                        <span className="truncate max-w-[100px]">{matter.assignee.full_name}</span>
                                                     </div>
-                                                    {matter.assignee.full_name}
-                                                </div>
-                                            ) : (
-                                                <span className="text-slate-600 text-xs italic flex items-center gap-1">
-                                                    Unassigned
-                                                </span>
-                                            )}
+                                                ) : (
+                                                    <span className="text-slate-600 text-[10px] italic border border-dashed border-white/5 px-2 py-1 rounded-lg w-fit">No Associate</span>
+                                                )}
+                                                {matter.manager ? (
+                                                    <div className="flex items-center gap-2 text-[10px] font-medium text-slate-300 bg-white/5 px-2 py-1 rounded-lg w-fit">
+                                                        <span className="text-slate-500 font-bold uppercase tracking-tighter mr-1 border-r border-white/10 pr-2">Mgr</span>
+                                                        <div className="w-4 h-4 rounded-full bg-slate-700 flex items-center justify-center text-[7px] font-bold text-slate-300 shadow-sm shrink-0">
+                                                            {matter.manager.full_name?.charAt(0)}
+                                                        </div>
+                                                        <span className="truncate max-w-[100px]">{matter.manager.full_name}</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-600 text-[10px] italic border border-dashed border-white/5 px-2 py-1 rounded-lg w-fit">No Manager</span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="p-4 text-slate-500 font-mono text-xs">{new Date(matter.created_at).toLocaleDateString()}</td>
                                         <td className="p-4 text-right pr-6">
@@ -250,13 +292,15 @@ export default function MatterManagementPage() {
                                                     <UserPlus className="w-3 h-3" />
                                                     Invite Guest
                                                 </button>
-                                                <button
-                                                    onClick={() => openAssignModal(matter.id, matter.assignee?.id)}
-                                                    className="text-slate-400 hover:text-white font-bold text-xs transition-colors flex items-center gap-1 border border-white/10 hover:border-slate-400 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
-                                                >
-                                                    <UserPlus className="w-3 h-3" />
-                                                    {matter.assignee ? 'Reassign' : 'Assign'}
-                                                </button>
+                                                {isAdminManager && (
+                                                    <button
+                                                        onClick={() => openAssignModal(matter.id, matter.assignee?.id, matter.manager?.id)}
+                                                        className="text-slate-400 hover:text-white font-bold text-xs transition-colors flex items-center gap-1 border border-white/10 hover:border-slate-400 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
+                                                    >
+                                                        <UserPlus className="w-3 h-3" />
+                                                        {matter.assignee || matter.manager ? 'Reassign' : 'Assign'}
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -343,38 +387,47 @@ export default function MatterManagementPage() {
                                 <X className="w-5 h-5" />
                             </button>
 
-                            <div className="mb-6">
-                                <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 mb-4">
-                                    <UserPlus className="w-6 h-6" />
+                            <div className="space-y-6 mb-8">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Principal Case Manager</label>
+                                    <div className="max-h-40 overflow-y-auto custom-scrollbar border border-white/10 rounded-xl bg-[#0F172A] p-1">
+                                        {caseManagers.length === 0 ? (
+                                            <p className="text-center text-slate-500 py-4 text-[10px]">No managers available.</p>
+                                        ) : (
+                                            caseManagers.map((mgr: any) => (
+                                                <button
+                                                    key={mgr.id}
+                                                    onClick={() => setSelectedCaseManager(mgr.id === selectedCaseManager ? '' : mgr.id)}
+                                                    className={`w-full flex items-center gap-2 p-2 rounded-lg transition-all text-left mb-1 ${selectedCaseManager === mgr.id ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400 hover:bg-white/5'}`}
+                                                >
+                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold ${selectedCaseManager === mgr.id ? 'bg-white text-slate-800' : 'bg-slate-800 text-slate-500'}`}>{mgr.full_name?.charAt(0)}</div>
+                                                    <div className="flex-1 shrink-0"><p className="font-bold text-xs">{mgr.full_name}</p></div>
+                                                    {selectedCaseManager === mgr.id && <Check className="w-3 h-3 text-emerald-400" />}
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
-                                <h3 className="text-2xl font-black text-white tracking-tight">Assign Associate</h3>
-                                <p className="text-slate-400 text-sm">Select an associate to lead this matter.</p>
-                            </div>
 
-                            <div className="space-y-4 mb-8">
-                                <div className="max-h-60 overflow-y-auto custom-scrollbar border border-white/10 rounded-xl bg-[#0F172A] p-1">
-                                    {associates?.length === 0 ? (
-                                        <p className="text-center text-slate-500 py-4 text-xs">No active associates found in firm.</p>
-                                    ) : (
-                                        associates?.map((assoc: any) => (
-                                            <button
-                                                key={assoc.id}
-                                                onClick={() => setSelectedAssociate(assoc.id === selectedAssociate ? '' : assoc.id)}
-                                                className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${selectedAssociate === assoc.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:bg-white/5'
-                                                    }`}
-                                            >
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${selectedAssociate === assoc.id ? 'bg-white text-indigo-600' : 'bg-slate-700 text-slate-300'
-                                                    }`}>
-                                                    {assoc.full_name?.charAt(0)}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p className="font-bold text-sm">{assoc.full_name}</p>
-                                                    <p className={`text-[10px] ${selectedAssociate === assoc.id ? 'text-indigo-200' : 'text-slate-500'}`}>{assoc.email}</p>
-                                                </div>
-                                                {selectedAssociate === assoc.id && <Check className="w-4 h-4" />}
-                                            </button>
-                                        ))
-                                    )}
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Assigned Associate Lawyer</label>
+                                    <div className="max-h-40 overflow-y-auto custom-scrollbar border border-white/10 rounded-xl bg-[#0F172A] p-1">
+                                        {associates.length === 0 ? (
+                                            <p className="text-center text-slate-500 py-4 text-[10px]">No associates available.</p>
+                                        ) : (
+                                            associates.map((assoc: any) => (
+                                                <button
+                                                    key={assoc.id}
+                                                    onClick={() => setSelectedAssociate(assoc.id === selectedAssociate ? '' : assoc.id)}
+                                                    className={`w-full flex items-center gap-2 p-2 rounded-lg transition-all text-left mb-1 ${selectedAssociate === assoc.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-white/5'}`}
+                                                >
+                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold ${selectedAssociate === assoc.id ? 'bg-white text-indigo-600' : 'bg-slate-800 text-slate-500'}`}>{assoc.full_name?.charAt(0)}</div>
+                                                    <div className="flex-1"><p className="font-bold text-xs">{assoc.full_name}</p></div>
+                                                    {selectedAssociate === assoc.id && <Check className="w-3 h-3 text-white" />}
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 

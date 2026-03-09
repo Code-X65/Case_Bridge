@@ -5,13 +5,17 @@ import InternalSidebar from '@/components/layout/InternalSidebar';
 import { useNavigate } from 'react-router-dom';
 import {
     Users, Shield,
-    ChevronRight, Loader2, FileText, Calendar,
-    MessageSquare, Activity
+    ChevronRight, FileText, Calendar,
+    MessageSquare, Activity, ArrowUpRight, ArrowDownRight, TrendingUp,
+    Zap
 } from 'lucide-react';
+import Skeleton, { TableSkeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/common/ToastService';
 
 export default function ClientBehaviorPage() {
     const { session, isLoading } = useInternalSession();
     const navigate = useNavigate();
+    const { toast } = useToast();
     const [clients, setClients] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedClient, setSelectedClient] = useState<any>(null);
@@ -43,6 +47,30 @@ export default function ClientBehaviorPage() {
         setLoading(false);
     };
 
+    const handleNudge = async (client: any) => {
+        try {
+            // Simulate/Trigger Nudge (Notification)
+            const { error } = await supabase
+                .from('notifications')
+                .insert({
+                    user_id: client.client_id,
+                    firm_id: session!.firm_id,
+                    type: 'action_required',
+                    title: 'Gentle Reminder',
+                    message: `You have ${client.pending_client_actions} pending items requiring your attention.`,
+                    related_case_id: null // Could be linked to a specific matter if needed
+                });
+
+            if (error) throw error;
+
+            toast(`A reminder has been sent to ${client.client_name}.`, 'success');
+
+        } catch (e) {
+            console.error(e);
+            toast('Could not send the reminder at this time.', 'error');
+        }
+    };
+
     const handleSelectClient = async (client: any) => {
         setSelectedClient(client);
         setLoadingDetails(true);
@@ -68,10 +96,38 @@ export default function ClientBehaviorPage() {
                 total: meetings?.length || 0
             };
 
+            // 3. Weekly Vitality (Trend Analysis)
+            const week1Start = new Date();
+            week1Start.setDate(week1Start.getDate() - 7);
+            const week2Start = new Date();
+            week2Start.setDate(week2Start.getDate() - 14);
+
+            const { count: thisWeek } = await supabase
+                .from('audit_logs')
+                .select('*', { count: 'exact', head: true })
+                .eq('actor_id', client.client_id)
+                .gte('created_at', week1Start.toISOString());
+
+            const { count: lastWeek } = await supabase
+                .from('audit_logs')
+                .select('*', { count: 'exact', head: true })
+                .eq('actor_id', client.client_id)
+                .gte('created_at', week2Start.toISOString())
+                .lt('created_at', week1Start.toISOString());
+
+            // 4. Peak Engagement Hour
+            const { data: peakData } = await supabase.rpc('get_client_peak_hour', { p_actor_id: client.client_id });
+            const peakHour = peakData?.[0]?.peak_hour;
+
+            const trend = (lastWeek || 0) === 0 ? (thisWeek || 0) * 100 : (((thisWeek || 0) - (lastWeek || 0)) / lastWeek!) * 100;
+
             setDetails({
                 docViews: viewCount || 0,
                 meetingStats,
-                lastActive: client.last_activity_at
+                lastActive: client.last_activity_at,
+                thisWeek: thisWeek || 0,
+                trend: Math.round(trend),
+                peakHour: peakHour !== undefined ? peakHour : null
             });
 
         } catch (e) {
@@ -108,7 +164,9 @@ export default function ClientBehaviorPage() {
                         </div>
 
                         {loading ? (
-                            <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-indigo-500" /></div>
+                            <div className="p-6">
+                                <TableSkeleton rows={8} cols={5} />
+                            </div>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-sm">
@@ -176,13 +234,58 @@ export default function ClientBehaviorPage() {
                             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="border-b border-white/5 pb-6 mb-6">
                                     <h2 className="text-xl font-black text-white mb-1">{selectedClient.client_name}</h2>
-                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{selectedClient.risk_status}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{selectedClient.risk_status}</p>
+                                    </div>
                                 </div>
 
                                 {loadingDetails ? (
-                                    <div className="py-10 flex justify-center"><Loader2 className="animate-spin text-indigo-500" /></div>
+                                    <div className="space-y-6">
+                                        <Skeleton className="h-24 w-full" />
+                                        <Skeleton className="h-32 w-full" />
+                                        <Skeleton className="h-24 w-full" />
+                                    </div>
                                 ) : (
                                     <div className="space-y-6">
+                                        {/* Weekly Trend */}
+                                        <div className="space-y-3">
+                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                                <TrendingUp size={12} /> Weekly Vitality
+                                            </h4>
+                                            <div className="bg-[#0F172A] rounded-xl p-4 border border-white/5 relative overflow-hidden">
+                                                <div className="flex justify-between items-end">
+                                                    <div>
+                                                        <span className="text-2xl font-black text-white">{details?.thisWeek || 0}</span>
+                                                        <span className="text-xs text-slate-500 ml-2">interactions</span>
+                                                    </div>
+                                                    <div className={`flex items-center gap-1 font-bold text-sm ${details?.trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                        {details?.trend >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                                                        {Math.abs(details?.trend || 0)}%
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 flex gap-1 h-1.5">
+                                                    {[...Array(7)].map((_, i) => (
+                                                        <div key={i} className={`flex-1 rounded-full ${i < (details?.thisWeek || 0) ? 'bg-indigo-500' : 'bg-white/5'}`}></div>
+                                                    ))}
+                                                </div>
+                                                <p className="text-[10px] text-slate-600 mt-2">
+                                                    Engagement velocity compared to previous 7 days.
+                                                </p>
+                                            </div>
+                                            
+                                            {details?.peakHour !== null && (
+                                                <div className="flex items-center justify-between px-4 py-2 bg-indigo-500/5 rounded-lg border border-indigo-500/10">
+                                                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Peak Interaction</span>
+                                                    <span className="text-xs font-bold text-white">
+                                                        {details.peakHour === 0 ? '12 AM' : 
+                                                         details.peakHour === 12 ? '12 PM' : 
+                                                         details.peakHour > 12 ? `${details.peakHour - 12} PM` : 
+                                                         `${details.peakHour} AM`}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {/* Activity */}
                                         <div className="space-y-3">
                                             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
@@ -235,6 +338,26 @@ export default function ClientBehaviorPage() {
                                                     <p className="text-xs text-amber-400 mt-1">Client has unread items.</p>
                                                 )}
                                             </div>
+                                        </div>
+
+                                        {/* Nudge Action */}
+                                        <div className="pt-4 border-t border-white/5">
+                                            <button
+                                                onClick={() => handleNudge(selectedClient)}
+                                                disabled={selectedClient.pending_client_actions === 0}
+                                                className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg ${selectedClient.pending_client_actions > 0
+                                                        ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20'
+                                                        : 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5'
+                                                    }`}
+                                            >
+                                                <Zap size={16} className={selectedClient.pending_client_actions > 0 ? "fill-white" : ""} />
+                                                Nudge Client
+                                            </button>
+                                            <p className="text-[10px] text-slate-500 mt-3 text-center px-4">
+                                                {selectedClient.pending_client_actions > 0
+                                                    ? "This will trigger an in-app and email reminder."
+                                                    : "No pending actions found for this client."}
+                                            </p>
                                         </div>
 
                                     </div>

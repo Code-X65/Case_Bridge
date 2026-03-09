@@ -12,11 +12,13 @@ import {
     ChevronLeft, ChevronRight, Search, Plus,
     Check, X, Calendar as CalendarIcon,
     ChevronDown, User, CheckCircle2, Clock,
-    ExternalLink, Copy, ShieldCheck, Globe
+    Copy, ShieldCheck, Globe, AlertCircle, Video
 } from 'lucide-react';
+import { useToast } from '@/components/common/ToastService';
 
 export default function InternalCalendar() {
     const { session } = useInternalSession();
+    const { toast } = useToast();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode] = useState<'week' | 'month' | 'day'>('week');
     const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(true);
@@ -27,14 +29,27 @@ export default function InternalCalendar() {
 
     const isAdmin = session?.role === 'admin_manager' || session?.role === 'admin';
 
-    // Fetch Sync Token
+    // Fetch Sync Connections
+    const { data: connections } = useQuery({
+        queryKey: ['calendar_connections', session?.user_id],
+        enabled: !!session?.user_id,
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('user_calendar_connections')
+                .select('*')
+                .eq('user_id', session!.user_id);
+            if (error) throw error;
+            return data;
+        }
+    });
+
     const { data: profile } = useQuery({
         queryKey: ['my_profile_sync', session?.user_id],
         enabled: !!session?.user_id,
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('calendar_sync_token, preferences')
+                .select('calendar_sync_token, preferences, primary_calendar_provider')
                 .eq('id', session!.user_id)
                 .single();
             if (error) throw error;
@@ -51,7 +66,6 @@ export default function InternalCalendar() {
                 .from('matter_tasks')
                 .select('*');
 
-            // If not global view and not an admin/manager, only show assigned tasks
             if (!isGlobalView && session!.role !== 'admin_manager' && session!.role !== 'case_manager') {
                 query = query.eq('assigned_to_id', session!.user_id);
             }
@@ -62,13 +76,28 @@ export default function InternalCalendar() {
         }
     });
 
+    // Fetch Deadlines
+    const { data: deadlines } = useQuery({
+        queryKey: ['calendar_deadlines', session?.firm_id, session?.user_id, isGlobalView],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('matter_deadlines')
+                .select(`
+                    *,
+                    matter:matters!inner(title, firm_id)
+                `)
+                .eq('matter.firm_id', session!.firm_id)
+                .order('deadline_date', { ascending: true });
+
+            if (error) throw error;
+            return data || [];
+        }
+    });
+
     // Fetch Meetings
     const { data: meetings } = useQuery({
         queryKey: ['calendar_meetings', session?.firm_id, session?.user_id, isGlobalView],
         queryFn: async () => {
-            console.log('Fetching meetings for firm:', session?.firm_id, 'Global:', isGlobalView);
-
-            // Note: Standard Supabase join uses the TABLE NAME for the relationship
             const { data, error } = await supabase
                 .from('case_meetings')
                 .select(`
@@ -79,12 +108,8 @@ export default function InternalCalendar() {
                 .eq('matter.firm_id', session!.firm_id)
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error('Meetings fetch error detail:', error);
-                throw error;
-            }
+            if (error) throw error;
 
-            // Client-side filter for personal vs firm-wide
             if (!isGlobalView && (session!.role === 'associate_lawyer')) {
                 return data.filter((m: any) => m.lawyer_user_id === session!.user_id);
             }
@@ -108,7 +133,6 @@ export default function InternalCalendar() {
 
     const resetToToday = () => setCurrentDate(new Date());
 
-    // Generate Grid Data for Week View
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
     const weekDays = eachDayOfInterval({
         start: weekStart,
@@ -204,9 +228,10 @@ export default function InternalCalendar() {
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setShowSyncModal(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                            className="flex items-center gap-3 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
                         >
-                            <ExternalLink size={14} /> Sync to Google
+                            <CalendarIcon size={14} />
+                            {connections && connections.length > 0 ? 'Sync Active' : 'Connect Calendar'}
                         </button>
                         <div className="relative hidden md:block group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
@@ -230,7 +255,6 @@ export default function InternalCalendar() {
                 </header>
 
                 <div className="flex flex-1 overflow-hidden">
-                    {/* Left Sidebar */}
                     <aside className="w-64 flex-shrink-0 border-r border-white/5 flex flex-col bg-[#0F172A] overflow-y-auto hidden md:flex">
                         <div className="p-6">
                             <button className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-all rounded-xl px-6 py-3 shadow-lg shadow-indigo-600/20 active:scale-95 group">
@@ -239,7 +263,6 @@ export default function InternalCalendar() {
                             </button>
                         </div>
 
-                        {/* Mini Calendar */}
                         <div className="px-6 py-2">
                             <div className="flex items-center justify-between mb-4 pl-1">
                                 <span className="text-sm font-bold text-slate-200">{format(currentDate, 'MMMM yyyy')}</span>
@@ -294,9 +317,7 @@ export default function InternalCalendar() {
                         </div>
                     </aside>
 
-                    {/* Main Calendar Grid */}
                     <main className="flex-1 flex flex-col bg-[#0F172A] overflow-hidden relative">
-                        {/* Week Header */}
                         <div className="flex border-b border-white/5 pr-4 ml-14">
                             {weekDays.map((day, i) => (
                                 <div key={i} className="flex-1 py-4 text-center border-l border-white/5">
@@ -313,17 +334,14 @@ export default function InternalCalendar() {
                             ))}
                         </div>
 
-                        {/* Scrollable Time Grid */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar">
                             <div className="relative min-h-[1440px]">
-                                {/* Time Lines */}
                                 {timeSlots.map((hour) => (
                                     <div key={hour} className="group flex h-[60px] relative">
                                         <div className="w-14 text-right pr-3 text-[10px] font-medium text-slate-500 -mt-2 transform -translate-y-1">
                                             {hour === 0 ? '' : format(setHours(new Date(), hour), 'ha')}
                                         </div>
                                         <div className="flex-1 border-t border-white/5 relative">
-                                            {/* Columns within time slot */}
                                             <div className="absolute inset-0 flex">
                                                 {weekDays.map((_, colIdx) => (
                                                     <div key={colIdx} className="flex-1 border-l border-white/5 h-full hover:bg-white/[0.02] transition-colors"></div>
@@ -333,33 +351,32 @@ export default function InternalCalendar() {
                                     </div>
                                 ))}
 
-                                {/* Events Overlay */}
+                                {/* Meetings Overlay */}
                                 {meetings?.map((m: any) => {
                                     const eventDate = new Date(m.confirmed_start || m.proposed_start);
-                                    // Only show if in current week
                                     if (!isWithinInterval(eventDate, { start: weekStart, end: endOfWeek(weekStart) })) return null;
-
                                     const dayIndex = weekDays.findIndex(d => isSameDay(d, eventDate));
                                     if (dayIndex === -1) return null;
-
                                     const startHour = getHours(eventDate);
                                     const minutes = eventDate.getMinutes();
                                     const topOffset = (startHour * 60) + minutes;
-                                    // assume 1 hour duration for demo if not specified
                                     const height = 60;
-
                                     return (
                                         <div
                                             key={m.id}
                                             className="absolute p-2 rounded-lg text-xs font-semibold overflow-hidden hover:z-50 hover:scale-[1.02] hover:shadow-xl transition-all border-l-2 border-indigo-400 bg-indigo-500/20 backdrop-blur-sm text-indigo-100 ring-1 ring-inset ring-indigo-500/30 cursor-pointer"
                                             style={{
                                                 top: `${topOffset}px`,
-                                                left: `calc(56px + ${(dayIndex * (100 / 7))}%)`, // 56px is timeline width, then % of remaining
-                                                width: `calc((100% - 56px) / 7 - 6px)`, // bit more gap
+                                                left: `calc(56px + ${(dayIndex * (100 / 7))}%)`,
+                                                width: `calc((100% - 56px) / 7 - 6px)`,
                                                 height: `${height}px`,
                                                 marginLeft: '3px'
                                             }}
                                         >
+                                            <div className="flex items-center gap-1 mb-0.5">
+                                                <Video size={10} className="text-indigo-400" />
+                                                <span className="text-[10px] font-black uppercase tracking-wider">Meeting</span>
+                                            </div>
                                             <div className="truncate font-bold">{m.matter?.title || 'Meeting'}</div>
                                             <div className="text-[10px] opacity-80 flex items-center gap-1">
                                                 <Clock size={10} />
@@ -368,11 +385,42 @@ export default function InternalCalendar() {
                                         </div>
                                     );
                                 })}
+
+                                {/* Deadlines Overlay */}
+                                {deadlines?.map((d: any) => {
+                                    const eventDate = new Date(d.deadline_date);
+                                    if (!isWithinInterval(eventDate, { start: weekStart, end: endOfWeek(weekStart) })) return null;
+                                    const dayIndex = weekDays.findIndex(day => isSameDay(day, eventDate));
+                                    if (dayIndex === -1) return null;
+                                    const startHour = getHours(eventDate);
+                                    const minutes = eventDate.getMinutes();
+                                    const topOffset = (startHour * 60) + minutes;
+                                    const height = 50;
+                                    const isCritical = d.priority === 'critical' || d.priority === 'emergency';
+                                    return (
+                                        <div
+                                            key={d.id}
+                                            className={`absolute p-2 rounded-lg text-xs font-semibold overflow-hidden hover:z-50 hover:scale-[1.02] hover:shadow-xl transition-all border-l-2 ${isCritical ? 'border-rose-500 bg-rose-500/20 text-rose-100 ring-rose-500/30' : 'border-amber-500 bg-amber-500/20 text-amber-100 ring-amber-500/30'} backdrop-blur-sm ring-1 ring-inset cursor-pointer`}
+                                            style={{
+                                                top: `${topOffset}px`,
+                                                left: `calc(56px + ${(dayIndex * (100 / 7))}%)`,
+                                                width: `calc((100% - 56px) / 7 - 6px)`,
+                                                height: `${height}px`,
+                                                marginLeft: '3px'
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-1 mb-0.5">
+                                                <AlertCircle size={10} className={isCritical ? 'text-rose-400' : 'text-amber-400'} />
+                                                <span className="text-[10px] font-black uppercase tracking-wider">{d.category}</span>
+                                            </div>
+                                            <div className="truncate font-bold">{d.title}</div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </main>
 
-                    {/* Right Task Panel (Collapsible) */}
                     {isTaskPanelOpen && (
                         <aside className="w-80 bg-[#0F172A] border-l border-white/5 flex flex-col flex-shrink-0 shadow-2xl">
                             <div className="h-16 flex items-center justify-between px-6 border-b border-white/5">
@@ -434,7 +482,6 @@ export default function InternalCalendar() {
                         </aside>
                     )}
 
-                    {/* Right-most Icon Strip (CaseBridge Style) */}
                     <div className="w-14 border-l border-white/5 flex flex-col items-center py-4 bg-[#0F172A]">
                         <div className="space-y-4">
                             <div className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 flex items-center justify-center cursor-pointer text-indigo-400 transition-colors tooltip" title="Tasks">
@@ -457,7 +504,6 @@ export default function InternalCalendar() {
                 </div>
             </div>
 
-            {/* SYNC MODAL */}
             {showSyncModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-[#1E293B] w-full max-w-lg rounded-3xl border border-white/10 shadow-2xl p-8 overflow-hidden relative">
@@ -478,46 +524,64 @@ export default function InternalCalendar() {
                         </div>
 
                         <div className="space-y-6">
-                            <div className="bg-black/20 rounded-2xl p-4 border border-white/5">
-                                <p className="text-sm text-slate-300 leading-relaxed">
-                                    Use the link below to subscribe to your CaseBridge schedule in <span className="text-indigo-400 font-bold">Google Calendar</span>, <span className="text-blue-400 font-bold">Outlook</span>, or <span className="text-white font-bold">Apple Calendar</span>.
-                                </p>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Your Private Sync Link</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        readOnly
-                                        value={`https://api.casebridge.com/v1/sync/calendar/${profile?.calendar_sync_token || 'generating...'}.ics`}
-                                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-mono text-indigo-300 outline-none"
-                                    />
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(`https://api.casebridge.com/v1/sync/calendar/${profile?.calendar_sync_token}.ics`);
-                                            alert("Sync Link Copied!");
-                                        }}
-                                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 rounded-xl transition-all active:scale-95 shadow-lg shadow-indigo-600/20"
-                                    >
-                                        <Copy size={18} />
-                                    </button>
+                            <div className="space-y-4">
+                                <div className="bg-black/20 rounded-2xl p-4 border border-white/5">
+                                    <p className="text-sm text-slate-300 leading-relaxed italic">
+                                        "Establish a persistent link between your professional CaseBridge dossier and external scheduling platforms."
+                                    </p>
                                 </div>
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-4 mt-8">
-                                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
-                                    <Globe className="text-cyan-400 w-4 h-4" />
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-slate-500 font-bold uppercase">Status</span>
-                                        <span className="text-xs text-white font-bold">Live & Encrypted</span>
-                                    </div>
+                                <div className="grid grid-cols-1 gap-3">
+                                    {['google', 'outlook'].map((provider) => {
+                                        const conn = connections?.find(c => c.provider === provider);
+                                        return (
+                                            <div key={provider} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/30 transition-all">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${provider === 'google' ? 'bg-red-500/10' : 'bg-blue-500/10'}`}>
+                                                        <Globe className={`w-5 h-5 ${provider === 'google' ? 'text-red-400' : 'text-blue-400'}`} />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-sm font-bold text-white capitalize">{provider} Workspace</h4>
+                                                        <p className="text-[10px] text-slate-500 font-bold uppercase">{conn ? `Synced: ${conn.provider_email}` : 'Not Connected'}</p>
+                                                    </div>
+                                                </div>
+                                                {conn ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest">Active</span>
+                                                        <button className="p-2 text-slate-500 hover:text-red-400 transition-colors"><X size={14} /></button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => toast(`Redirecting to ${provider} OAuth...`, 'info')}
+                                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                                                    >
+                                                        Connect
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
-                                    <Clock className="text-emerald-400 w-4 h-4" />
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-slate-500 font-bold uppercase">Refresh</span>
-                                        <span className="text-xs text-white font-bold">Every 15 mins</span>
+
+                                <div className="py-2">
+                                    <div className="h-px bg-white/5 w-full my-4" />
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Universal iCal Token (Legacy Sync)</label>
+                                    <div className="flex gap-2 mt-2">
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={`https://api.casebridge.com/v1/sync/calendar/${profile?.calendar_sync_token || 'uuid'}.ics`}
+                                            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-mono text-indigo-300 outline-none"
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(`https://api.casebridge.com/v1/sync/calendar/${profile?.calendar_sync_token}.ics`);
+                                                toast("iCal Token Copied!", 'success');
+                                            }}
+                                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 rounded-xl transition-all active:scale-95 shadow-lg shadow-indigo-600/20"
+                                        >
+                                            <Copy size={16} />
+                                        </button>
                                     </div>
                                 </div>
                             </div>

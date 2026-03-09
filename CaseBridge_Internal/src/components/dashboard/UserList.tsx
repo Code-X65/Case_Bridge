@@ -1,5 +1,7 @@
 import { BadgeCheck, Clock, User, Link as LinkIcon } from 'lucide-react';
 import type { UserRole, Invitation } from '@/types/internal';
+import { useToast } from '@/components/common/ToastService';
+import Skeleton from '@/components/ui/Skeleton';
 
 interface UserListProps {
     users: UserRole[];
@@ -8,7 +10,15 @@ interface UserListProps {
 }
 
 export default function UserList({ users, invites, isLoading }: UserListProps) {
-    if (isLoading) return <div className="text-slate-500">Loading team...</div>;
+    const { toast } = useToast();
+
+    if (isLoading) return (
+        <div className="space-y-4">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+        </div>
+    );
 
     return (
         <div className="space-y-8">
@@ -64,7 +74,7 @@ export default function UserList({ users, invites, isLoading }: UserListProps) {
                                         onClick={() => {
                                             const link = `${window.location.origin}/auth/accept-invite?token=${invite.token}`;
                                             navigator.clipboard.writeText(link);
-                                            alert('Invitation link copied to clipboard!');
+                                            toast('Invitation link copied to clipboard!', 'success');
                                         }}
                                         className="p-2 text-slate-400 hover:bg-white/10 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold"
                                         title="Copy Invite Link"

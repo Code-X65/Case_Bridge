@@ -1,7 +1,9 @@
 
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useConnectivity } from '../contexts/ConnectivityContext';
 
 export interface Notification {
     id: string;
@@ -19,6 +21,7 @@ export interface Notification {
 
 export function useNotifications() {
     const { user } = useAuth();
+    const { setRealtimeStatus } = useConnectivity();
     const queryClient = useQueryClient();
 
     const { data: notifications, isLoading } = useQuery({
@@ -37,8 +40,59 @@ export function useNotifications() {
             }
             return (data || []) as Notification[];
         },
-        refetchInterval: 30000
+        staleTime: 1000 * 60 * 30, // 30 minutes - relying on realtime
     });
+
+    // Real-time subscription to notifications
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const channel = supabase
+            .channel(`client-notifications-${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${user.id}`
+                },
+                (payload) => {
+                    queryClient.setQueryData(['notifications', user.id], (old: Notification[] | undefined) => {
+                        const newNotif = payload.new as Notification;
+                        if (!old) return [newNotif];
+                        if (old.find(n => n.id === newNotif.id)) return old;
+                        return [newNotif, ...old];
+                    });
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${user.id}`
+                },
+                (payload) => {
+                    queryClient.setQueryData(['notifications', user.id], (old: Notification[] | undefined) => {
+                        if (!old) return [];
+                        return old.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n);
+                    });
+                }
+            )
+            .subscribe((status, err) => {
+                if (status === 'SUBSCRIBED') {
+                    setRealtimeStatus(true);
+                } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                    setRealtimeStatus(false, err?.message || 'Connection lost');
+                }
+            });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user?.id, queryClient]);
 
     const markAsRead = useMutation({
         mutationFn: async (id: string) => {

@@ -4,10 +4,11 @@ import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
 import InternalSidebar from '@/components/layout/InternalSidebar';
 import {
-    Loader2, History, User, Activity, Calendar, Info,
+    History, User, Activity, Calendar, Info,
     Search, X, Download, AlertCircle
 } from 'lucide-react';
 import { format, subDays, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 
 interface AuditLog {
     id: string;
@@ -241,72 +242,69 @@ export default function AuditLogsPage() {
                     </div>
 
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 border-b border-white/5 bg-white/[0.01]">
-                                    <th className="px-10 py-6">Timestamp / Seq</th>
-                                    <th className="px-10 py-6">Identity</th>
-                                    <th className="px-10 py-6">Action / Directive</th>
-                                    <th className="px-10 py-6">Metadata / Payloads</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {isLoading ? (
-                                    <tr>
-                                        <td colSpan={4} className="px-8 py-24 text-center">
-                                            <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mx-auto mb-4" />
-                                            <p className="text-slate-500 text-xs font-black uppercase tracking-widest">Reconstructing Audit Chain...</p>
-                                        </td>
+                        {isLoading ? (
+                            <TableSkeleton rows={8} cols={4} />
+                        ) : (
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 border-b border-white/5 bg-white/[0.01]">
+                                        <th className="px-10 py-6">Timestamp / Seq</th>
+                                        <th className="px-10 py-6">Identity</th>
+                                        <th className="px-10 py-6">Action / Directive</th>
+                                        <th className="px-10 py-6">Metadata / Payloads</th>
                                     </tr>
-                                ) : filteredLogs.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={4} className="px-8 py-24 text-center">
-                                            <Info className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                                            <p className="text-slate-400 font-bold uppercase tracking-widest">No matching records found in ledger</p>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredLogs.map((log) => (
-                                        <tr key={log.id} className="group hover:bg-white/[0.02] transition-colors border-l-2 border-l-transparent hover:border-l-indigo-500">
-                                            <td className="px-10 py-7">
-                                                <div className="flex items-center gap-3">
-                                                    <Calendar className="w-4 h-4 text-slate-700" />
-                                                    <div>
-                                                        <p className="text-sm font-bold text-slate-300">
-                                                            {format(new Date(log.created_at), 'MMM dd, yyyy')}
-                                                        </p>
-                                                        <p className="text-[10px] text-slate-500 font-mono uppercase font-bold">
-                                                            {format(new Date(log.created_at), 'hh:mm:ss a')}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-10 py-7">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20 group-hover:scale-110 transition-transform">
-                                                        <User className="w-5 h-5 text-indigo-400" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-black text-white">{log.actor?.full_name || 'System / Kernel'}</p>
-                                                        <p className="text-[10px] text-slate-500 font-medium">{log.actor?.email || 'automated@casebridge.io'}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-10 py-7">
-                                                <span className={`px - 4 py - 2 rounded - xl text - [10px] font - black uppercase tracking - wider shadow - sm ${getActionColor(log.action)} `}>
-                                                    {formatAction(log.action)}
-                                                </span>
-                                            </td>
-                                            <td className="px-10 py-7">
-                                                <div className="max-w-[320px]">
-                                                    {renderMetadata(log.metadata)}
-                                                </div>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {filteredLogs.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="px-8 py-24 text-center">
+                                                <Info className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+                                                <p className="text-slate-400 font-bold uppercase tracking-widest">No matching records found in ledger</p>
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    ) : (
+                                        filteredLogs.map((log) => (
+                                            <tr key={log.id} className="group hover:bg-white/[0.02] transition-colors border-l-2 border-l-transparent hover:border-l-indigo-500">
+                                                <td className="px-10 py-7">
+                                                    <div className="flex items-center gap-3">
+                                                        <Calendar className="w-4 h-4 text-slate-700" />
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-300">
+                                                                {format(new Date(log.created_at), 'MMM dd, yyyy')}
+                                                            </p>
+                                                            <p className="text-[10px] text-slate-500 font-mono uppercase font-bold">
+                                                                {format(new Date(log.created_at), 'hh:mm:ss a')}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-10 py-7">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20 group-hover:scale-110 transition-transform">
+                                                            <User className="w-5 h-5 text-indigo-400" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-black text-white">{log.actor?.full_name || 'System / Kernel'}</p>
+                                                            <p className="text-[10px] text-slate-500 font-medium">{log.actor?.email || 'automated@casebridge.io'}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-10 py-7">
+                                                    <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm ${getActionColor(log.action)}`}>
+                                                        {formatAction(log.action)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-10 py-7">
+                                                    <div className="max-w-[320px]">
+                                                        {renderMetadata(log.metadata)}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
 
                     <div className="p-8 bg-white/[0.01] border-t border-white/5 text-center">

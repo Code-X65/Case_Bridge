@@ -83,7 +83,10 @@ export default function InternalLoginPage() {
                 throw new Error('You are not authorized for any firm.');
             }
 
-            // STEP 4: Create Internal Session
+            // STEP 4: Reset failed attempts on success
+            await supabase.rpc('reset_failed_auth');
+
+            // STEP 5: Create Internal Session
             const newSessionRes = await createSession.mutateAsync({
                 firmId: userFirmRole.firm_id,
                 role: userFirmRole.role
@@ -98,6 +101,17 @@ export default function InternalLoginPage() {
 
         } catch (err: any) {
             console.error('Login error detailed:', err);
+
+            // STEP 6: Handle lockout on failure
+            try {
+                const { data: lockoutStatus } = await supabase.rpc('handle_failed_auth', { p_email: email });
+                if (lockoutStatus?.status === 'locked') {
+                    navigate('/auth/locked');
+                    return;
+                }
+            } catch (lockoutErr) {
+                console.error('Lockout tracking error:', lockoutErr);
+            }
 
             // Ignore AbortError if we are navigating away anyway
             if (err.name === 'AbortError' || err.message?.includes('aborted')) return;

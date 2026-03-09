@@ -1,33 +1,37 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: hsl(222.2 84% 4.9%);
-  --color-foreground: hsl(210 40% 98%);
+  --color-background: #0B1A2A;
+  --color-foreground: #F0F6FC;
 
-  --color-card: hsl(222.2 84% 4.9%);
-  --color-card-foreground: hsl(210 40% 98%);
+  --color-card: #162B3C;
+  --color-card-foreground: #F0F6FC;
 
-  --color-popover: hsl(222.2 84% 4.9%);
-  --color-popover-foreground: hsl(210 40% 98%);
+  --color-popover: #162B3C;
+  --color-popover-foreground: #F0F6FC;
 
-  --color-primary: hsl(217.2 91.2% 59.8%);
-  --color-primary-foreground: hsl(222.2 47.4% 11.2%);
+  --color-primary: #C9A24D;
+  --color-primary-foreground: #0B1A2A;
 
-  --color-secondary: hsl(217.2 32.6% 17.5%);
-  --color-secondary-foreground: hsl(210 40% 98%);
+  --color-secondary: #B86B6B;
+  --color-secondary-foreground: #F0F6FC;
 
-  --color-muted: hsl(217.2 32.6% 17.5%);
-  --color-muted-foreground: hsl(215 20.2% 65.1%);
+  --color-muted: #162B3C;
+  --color-muted-foreground: #9BB7D4;
 
-  --color-accent: hsl(217.2 32.6% 17.5%);
-  --color-accent-foreground: hsl(210 40% 98%);
+  --color-accent: #C9A24D;
+  --color-accent-foreground: #0B1A2A;
 
   --color-destructive: hsl(0 62.8% 30.6%);
   --color-destructive-foreground: hsl(210 40% 98%);
 
-  --color-border: hsl(217.2 32.6% 17.5%);
-  --color-input: hsl(217.2 32.6% 17.5%);
-  --color-ring: hsl(224.3 76.3% 48%);
+  --color-border: #1F3A4F;
+  --color-input: #1F3A4F;
+  --color-ring: #C9A24D;
+
+  --shadow-neumorph: 8px 8px 16px rgba(0, 0, 0, 0.45), -8px -8px 16px rgba(255, 255, 255, 0.02);
+  --shadow-neumorph-inset: inset 8px 8px 16px rgba(0, 0, 0, 0.45), inset -8px -8px 16px rgba(255, 255, 255, 0.02);
+  --radius-neumorph: 14px;
 }
 
 /* 
@@ -51,7 +55,7 @@
 */
 @layer components {
 
-  /* Glassmorphism */
+  /* Glassmorphism & Neumorphism */
   .glass {
     @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-lg;
   }
@@ -60,10 +64,21 @@
     @apply bg-card/60 backdrop-blur-xl border border-white/10 rounded-lg p-8 shadow-xl;
   }
 
+  .card-neumorph {
+    @apply bg-card text-card-foreground border border-border/30;
+    border-radius: var(--radius-neumorph);
+    box-shadow: var(--shadow-neumorph);
+  }
+
+  .card-neumorph-inset {
+    @apply bg-background text-foreground border border-border/20;
+    border-radius: var(--radius-neumorph);
+    box-shadow: var(--shadow-neumorph-inset);
+  }
+
   /* Layouts */
   .page-container {
     @apply min-h-screen flex items-center justify-center p-8;
-    background: radial-gradient(circle at top left, hsl(217.2 91.2% 59.8% / 0.1), transparent 40%);
   }
 
   .auth-card {

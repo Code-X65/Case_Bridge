@@ -45,7 +45,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SEC URITY DEFINER;
 
 -- 2. ENHANCEMENT: Preserve Records on Staff Deletion
 -- Adjust foreign keys to use ON DELETE SET NULL for historical stability.

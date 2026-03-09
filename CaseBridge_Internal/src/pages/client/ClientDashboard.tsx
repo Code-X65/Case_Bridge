@@ -4,9 +4,11 @@ import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { LogOut, FileText, Upload, Bell, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/components/common/ToastService';
 
 export default function ClientDashboard() {
     const navigate = useNavigate();
+    const { toast } = useToast();
     const [uploading, setUploading] = useState(false);
 
     // Get Session (Direct Supabase as hook is for internal)
@@ -77,7 +79,7 @@ export default function ClientDashboard() {
             if (error) throw error;
         },
         onSuccess: () => {
-            alert('Document uploaded successfully');
+            toast('Document uploaded successfully', 'success');
             setUploading(false);
         }
     });

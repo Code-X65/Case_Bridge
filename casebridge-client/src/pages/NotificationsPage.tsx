@@ -1,27 +1,31 @@
 import { useNotifications } from '../hooks/useNotifications';
-import { Bell, Check, Clock, Shield, ArrowRight } from 'lucide-react';
+import { Bell, Check, Clock, Shield, ArrowRight, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
 export default function NotificationsPage() {
     const { notifications, isLoading, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
     return (
-        <>
-            <div className="max-w-4xl mx-auto px-4 sm:px-0">
-                <header className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 sm:mb-10 gap-6">
+        <div className="animate-fade-in relative max-w-4xl mx-auto pb-10">
+            {/* Ambient Background Blur */}
+            <div className="absolute top-[0%] right-[10%] w-[30%] h-[30%] bg-primary/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
+
+            <div className="relative z-10 px-2 sm:px-0">
+                <header className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 gap-6">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 border border-blue-500/20 shadow-lg shadow-blue-500/5 shrink-0">
-                            <Bell size={24} className="sm:w-7 sm:h-7" />
+                        <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary border border-primary/20 shadow-sm shrink-0">
+                            <Bell size={28} />
                         </div>
                         <div className="min-w-0">
-                            <h1 className="text-2xl sm:text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400 truncate">Notifications</h1>
-                            <p className="text-[9px] sm:text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] mt-1 whitespace-nowrap">Updates on your legal matters</p>
+                            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground mb-1">Alerts</h1>
+                            <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Updates on your legal matters</p>
                         </div>
                     </div>
 
                     {unreadCount > 0 && (
                         <button
                             onClick={() => markAllAsRead.mutate()}
-                            className="w-full sm:w-auto bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white px-6 py-3 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border border-white/10"
+                            className="w-full sm:w-auto bg-card hover:bg-input text-foreground px-6 py-3.5 sm:py-3 rounded-[var(--radius-neumorph)] text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-border shadow-sm hover:shadow-neumorph-inset"
                         >
                             <Check size={16} />
                             Mark all as read
@@ -32,48 +36,51 @@ export default function NotificationsPage() {
                 <div className="space-y-4">
                     {isLoading && (
                         <div className="flex justify-center py-20">
-                            <span className="animate-spin h-8 w-8 border-2 border-primary rounded-full border-t-transparent"></span>
+                            <Loader2 className="animate-spin text-primary" size={40} />
                         </div>
                     )}
 
-                    {!isLoading && notifications?.length === 0 && (
-                        <div className="text-center py-16 sm:py-24 glass-card border-dashed">
-                            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 opacity-20">
-                                <Bell size={32} className="text-muted-foreground sm:w-10 sm:h-10" />
+                    {!isLoading && (!notifications || notifications.length === 0) && (
+                        <div className="bg-card/50 border border-dashed border-border rounded-[2rem] flex flex-col items-center justify-center py-16 sm:py-24 shadow-neumorph-inset">
+                            <div className="w-20 h-20 bg-input border border-border rounded-full flex items-center justify-center mb-6 shadow-sm">
+                                <Bell size={36} className="text-muted-foreground/50" />
                             </div>
-                            <h3 className="text-lg sm:text-xl font-black text-slate-400 mb-2">You're All Caught Up</h3>
-                            <p className="text-slate-500 text-xs sm:text-sm max-w-xs mx-auto px-4">New updates about your cases or assigned counsel will appear here.</p>
+                            <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-3">You're All Caught Up</h3>
+                            <p className="text-muted-foreground text-sm sm:text-base max-w-sm text-center px-4">New updates about your cases or assigned counsel will appear here.</p>
                         </div>
                     )}
 
                     {notifications?.map((notification) => (
                         <div
                             key={notification.id}
-                            className={`notification-card relative p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border transition-all ${notification.read_at
-                                ? 'bg-white/5 border-white/5 opacity-75 hover:opacity-100'
-                                : 'bg-white/10 border-blue-500/20 shadow-2xl shadow-blue-500/5'
+                            className={`relative p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border transition-all duration-300 ${notification.read_at
+                                ? 'bg-card border-border shadow-sm hover:shadow-neumorph opacity-80 hover:opacity-100'
+                                : 'bg-primary/5 border-primary/30 shadow-[0_0_15px_rgba(201,162,77,0.1)]'
                                 }`}
                         >
+                            {/* Hover background glow */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 hover:opacity-100 transition-opacity rounded-[1.5rem] sm:rounded-[2rem] pointer-events-none"></div>
+
                             {!notification.read_at && (
-                                <div className="absolute top-6 right-6 sm:top-8 sm:right-8 w-2.5 h-2.5 bg-blue-500 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.6)]"></div>
+                                <div className="absolute top-6 right-6 sm:top-8 sm:right-8 w-3 h-3 bg-primary rounded-full shadow-[0_0_10px_rgba(201,162,77,0.8)] animate-pulse"></div>
                             )}
 
-                            <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 text-left">
-                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center bg-blue-500/10 text-blue-400 flex-shrink-0 border border-blue-500/10`}>
+                            <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 relative z-10">
+                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 border transition-colors ${notification.read_at ? 'bg-input border-border text-muted-foreground' : 'bg-primary/20 border-primary/30 text-primary'}`}>
                                     <Shield size={22} className="sm:w-6 sm:h-6" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <header className="flex justify-between items-start mb-3">
                                         <div>
-                                            <h4 className={`text-lg sm:text-xl font-black tracking-tight leading-tight ${notification.read_at ? 'text-slate-400' : 'text-white'}`}>
-                                                {notification.payload.title || 'Case Update'}
+                                            <h4 className={`text-lg sm:text-xl font-bold tracking-tight leading-tight ${notification.read_at ? 'text-foreground' : 'text-primary'}`}>
+                                                {notification.payload?.title || 'Case Update'}
                                             </h4>
                                             <div className="flex flex-wrap items-center gap-2 mt-2">
-                                                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">
-                                                    {notification.event_type.replace(/_/g, ' ')}
+                                                <span className="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
+                                                    {(notification.event_type || 'update').replace(/_/g, ' ')}
                                                 </span>
-                                                <span className="text-slate-600 font-bold hidden sm:inline">•</span>
-                                                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
+                                                <span className="text-border hidden sm:inline">•</span>
+                                                <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                                                     <Clock size={12} />
                                                     {new Date(notification.created_at).toLocaleString()}
                                                 </span>
@@ -81,27 +88,27 @@ export default function NotificationsPage() {
                                         </div>
                                     </header>
 
-                                    <p className="text-slate-300 text-sm leading-relaxed mb-6 italic opacity-80 break-words">
-                                        "{notification.payload.message}"
+                                    <p className="text-muted-foreground text-sm sm:text-base leading-relaxed mb-6 border-l-2 border-primary/30 pl-4 py-1 italic break-words">
+                                        "{notification.payload?.message || 'No details provided.'}"
                                     </p>
 
-                                    <div className="flex flex-wrap items-center gap-4">
-                                        {notification.payload.link && (
+                                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                                        {notification.payload?.link && (
                                             <Link
                                                 to={notification.payload.link}
                                                 onClick={() => !notification.read_at && markAsRead.mutate(notification.id)}
-                                                className="bg-blue-600 hover:bg-blue-500 text-white px-5 sm:px-6 py-3 sm:py-2.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 group flex-1 sm:flex-none"
+                                                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3.5 sm:py-3 rounded-[var(--radius-neumorph)] text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(201,162,77,0.3)] hover:shadow-[0_0_20px_rgba(201,162,77,0.4)] flex items-center justify-center gap-2 group hover:-translate-y-0.5 active:scale-95"
                                             >
                                                 View Case
-                                                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                                             </Link>
                                         )}
                                         {!notification.read_at && (
                                             <button
                                                 onClick={() => markAsRead.mutate(notification.id)}
-                                                className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors flex items-center justify-center gap-2 py-2 flex-1 sm:flex-none"
+                                                className="w-full sm:w-auto text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2 py-3 px-4 rounded-[var(--radius-neumorph)] hover:bg-input border border-transparent hover:border-border"
                                             >
-                                                <Check size={14} />
+                                                <Check size={16} />
                                                 Dismiss
                                             </button>
                                         )}
@@ -112,6 +119,6 @@ export default function NotificationsPage() {
                     ))}
                 </div>
             </div>
-        </>
+        </div>
     );
 }

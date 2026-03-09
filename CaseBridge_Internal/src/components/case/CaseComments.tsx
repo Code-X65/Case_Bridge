@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
-import { MessageSquare, Send, Loader2, Trash2 } from 'lucide-react';
+import { MessageSquare, Send, Loader2, Trash2, ShieldCheck, Lock } from 'lucide-react';
+import { cryptoVault } from '@/lib/crypto';
+import { useToast } from '@/components/common/ToastService';
+import { useConfirm } from '@/components/common/ConfirmDialogProvider';
 
 interface CaseCommentsProps {
     matterId: string;
@@ -9,15 +12,52 @@ interface CaseCommentsProps {
 
 export default function CaseComments({ matterId }: CaseCommentsProps) {
     const { session } = useInternalSession();
+    const { toast } = useToast();
+    const { confirm } = useConfirm();
     const [comments, setComments] = useState<any[]>([]);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [matterKey, setMatterKey] = useState<CryptoKey | null>(null);
+    const [encryptionEnabled, setEncryptionEnabled] = useState(true);
 
     const isAdminOrCM = session?.role === 'admin_manager' || session?.role === 'case_manager';
 
     useEffect(() => {
         if (!matterId) return;
+
+        const initEncryption = async () => {
+            try {
+                // Fetch or Generate Matter Key
+                const { data: keyData, error: keyError } = await supabase
+                    .from('matter_keys')
+                    .select('encrypted_key')
+                    .eq('matter_id', matterId)
+                    .single();
+
+                if (keyError) {
+                    console.error('Failed to fetch matter key:', keyError);
+                }
+
+                if (keyData) {
+                    const key = await cryptoVault.importKey(keyData.encrypted_key);
+                    setMatterKey(key);
+                } else {
+                    const newKey = await cryptoVault.generateKey();
+                    const exported = await cryptoVault.exportKey(newKey);
+                    await supabase.from('matter_keys').insert({
+                        matter_id: matterId,
+                        encrypted_key: exported
+                    });
+                    setMatterKey(newKey);
+                }
+            } catch (err) {
+                console.error("Encryption initialization failed:", err);
+                setEncryptionEnabled(false);
+            }
+        };
+
+        initEncryption();
         fetchComments();
 
         // Subscribe to real-time comment updates
@@ -56,7 +96,19 @@ export default function CaseComments({ matterId }: CaseCommentsProps) {
             .eq('matter_id', matterId)
             .order('created_at', { ascending: true });
 
-        if (data) setComments(data);
+        if (data && matterKey) {
+            // Decrypt messages if they are flagged as encrypted
+            const decrypted = await Promise.all(data.map(async (c: any) => {
+                if (c.is_encrypted && c.comment_text && matterKey) {
+                    const text = await cryptoVault.decrypt(c.comment_text, matterKey);
+                    return { ...c, comment_text: text };
+                }
+                return c;
+            }));
+            setComments(decrypted);
+        } else if (data) {
+            setComments(data);
+        }
         setLoading(false);
     };
 
@@ -66,13 +118,21 @@ export default function CaseComments({ matterId }: CaseCommentsProps) {
 
         setSubmitting(true);
         try {
+            let finalContent = newComment.trim();
+            const shouldEncrypt = encryptionEnabled && matterKey;
+
+            if (shouldEncrypt && matterKey) {
+                finalContent = await cryptoVault.encrypt(finalContent, matterKey);
+            }
+
             const { error } = await supabase
                 .from('case_comments')
                 .insert({
                     matter_id: matterId,
                     author_id: session?.user_id,
-                    comment_text: newComment.trim(),
-                    is_internal: true
+                    comment_text: finalContent,
+                    is_internal: true,
+                    is_encrypted: shouldEncrypt
                 });
 
             if (error) throw error;
@@ -80,14 +140,14 @@ export default function CaseComments({ matterId }: CaseCommentsProps) {
             setNewComment('');
             fetchComments();
         } catch (err: any) {
-            alert('Error posting comment: ' + err.message);
+            toast('Error posting comment: ' + err.message, 'error');
         } finally {
             setSubmitting(false);
         }
     };
 
     const handleDelete = async (commentId: string) => {
-        if (!confirm('Delete this comment?')) return;
+        if (!(await confirm({ title: 'Delete Comment', message: 'Delete this comment?', confirmText: 'Delete', isDangerous: true }))) return;
 
         const { error } = await supabase
             .from('case_comments')
@@ -101,9 +161,17 @@ export default function CaseComments({ matterId }: CaseCommentsProps) {
 
     return (
         <div className="bg-[#1E293B] border border-white/10 rounded-2xl p-6">
-            <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4" /> Internal Case Notes
-            </h3>
+            <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" /> Internal Case Notes
+                </h3>
+                {encryptionEnabled && (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                        <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">AES-256 Protected</span>
+                    </div>
+                )}
+            </div>
 
             <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
                 {loading ? (
@@ -138,7 +206,8 @@ export default function CaseComments({ matterId }: CaseCommentsProps) {
                                     </button>
                                 )}
                             </div>
-                            <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                            <p className="text-sm text-slate-300 whitespace-pre-wrap flex items-start gap-2">
+                                {comment.is_encrypted && <Lock size={12} className="text-indigo-400 mt-1 shrink-0" />}
                                 {comment.comment_text}
                             </p>
                         </div>

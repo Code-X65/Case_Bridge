@@ -9,7 +9,8 @@ import {
     ChevronRight,
     ShieldCheck,
     FileText,
-    Bell
+    Bell,
+    PenTool
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -20,6 +21,7 @@ export default function Dashboard() {
     const [userName, setUserName] = useState('');
     const [cases, setCases] = useState<any[]>([]);
     const [activity, setActivity] = useState<any[]>([]);
+    const [pendingSignatures, setPendingSignatures] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -35,23 +37,42 @@ export default function Dashboard() {
 
                 setUserName(profile?.first_name || user?.user_metadata?.first_name || 'Client');
 
-                // 2. Fetch Cases
                 const { data: casesData } = await supabase
                     .from('case_reports')
                     .select('id, title, status, created_at')
                     .eq('client_id', user.id);
 
-                setCases(casesData || []);
+                const { data: mattersData } = await supabase
+                    .from('matters')
+                    .select('id, title, status:lifecycle_state, created_at, case_report_id')
+                    .eq('client_id', user.id);
+
+                // Deduplicate: If a matter exists for a report, hide the report
+                const convertedReportIds = new Set(mattersData?.map(m => m.case_report_id).filter(Boolean));
+                const uniqueReports = (casesData || []).filter(r => !convertedReportIds.has(r.id));
+                const allCombined = [...uniqueReports, ...(mattersData || [])].sort((a,b) => 
+                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                );
+
+                setCases(allCombined);
 
                 // 3. Fetch Recent Activity (Notifications)
                 const { data: notifs } = await supabase
-                    .from('notifications')
+                    .from('client_notifications')
                     .select('*')
-                    .eq('user_id', user.id)
+                    .eq('client_id', user.id)
                     .order('created_at', { ascending: false })
                     .limit(5);
 
                 setActivity(notifs || []);
+
+                // 4. Fetch Pending Signature Requests
+                const { data: sigRequests } = await supabase
+                    .from('signature_requests')
+                    .select('id, message, created_at, document:document_id(filename)')
+                    .eq('client_id', user.id)
+                    .eq('status', 'pending');
+                setPendingSignatures(sigRequests || []);
 
             } catch (err) {
                 console.error("Dashboard Fetch Error", err);
@@ -63,13 +84,46 @@ export default function Dashboard() {
     const hasCases = cases.length > 0;
 
     return (
-        <>
-            <div className="px-2 sm:px-0">
-                <div className="mb-6 sm:mb-8 lg:mb-10">
-                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 mb-2">
-                        Welcome, {userName || 'Client'}
-                    </h1>
-                    <p className="header-desc text-muted-foreground text-sm sm:text-base lg:text-lg">Your secure legal portal is active and ready.</p>
+        <div className="animate-fade-in relative max-w-7xl mx-auto">
+
+            {/* Ambient Background Blur for main content area */}
+            <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
+
+            <div className="relative z-10 px-2 sm:px-0">
+
+                {/* ⚡ Action Required: Pending Signatures Banner */}
+                {pendingSignatures.length > 0 && (
+                    <div className="mb-6 bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 flex items-start gap-4 shadow-lg shadow-amber-500/5">
+                        <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
+                            <PenTool size={20} />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-black text-amber-400 uppercase tracking-widest mb-1">Action Required — Signature Pending</p>
+                            <p className="text-sm text-amber-200/70 mb-3">
+                                You have <strong>{pendingSignatures.length}</strong> document{pendingSignatures.length > 1 ? 's' : ''} awaiting your signature.
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {pendingSignatures.map(req => (
+                                    <Link
+                                        key={req.id}
+                                        to={`/sign/${req.id}`}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-amber-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all"
+                                    >
+                                        <PenTool size={12} /> Sign: {req.document?.filename || 'Document'}
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div className="mb-8 lg:mb-12 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-foreground mb-2">
+                            Welcome, <span className="text-primary">{userName || 'Client'}</span>
+                        </h1>
+                        <p className="text-muted-foreground text-base sm:text-lg">Your secure legal portal is active and ready.</p>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -77,85 +131,106 @@ export default function Dashboard() {
                     {/* Main Content Column */}
                     <div className="lg:col-span-2 space-y-6 sm:space-y-8">
 
-                        {/* Status Card - Enhanced */}
-                        <div className="status-card glass-card relative overflow-hidden group border-l-4 border-l-blue-500 hover:shadow-2xl hover:shadow-blue-900/10 transition-all duration-300 p-6 sm:p-8">
-                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity hidden sm:block">
-                                <ShieldCheck size={120} />
+                        {/* Status Card - Premium Aesthetic */}
+                        <div className="bg-card border border-border relative overflow-hidden group shadow-neumorph rounded-[2rem] p-8 sm:p-10 transition-all duration-300">
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50"></div>
+
+                            <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity duration-700 hidden sm:block scale-150 origin-top-right">
+                                <ShieldCheck size={200} />
                             </div>
 
                             <div className="relative z-10 text-left">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
-                                    <span className="text-blue-400 font-black tracking-[0.2em] text-[10px] uppercase">Account Status</span>
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(201,162,77,0.8)]"></div>
+                                    <span className="text-primary font-bold tracking-[0.2em] text-[10px] uppercase">Account Status</span>
                                 </div>
 
-                                <h3 className="text-xl sm:text-2xl font-bold mb-3">
-                                    {!hasCases ? "System Ready" : "Active Engagement"}
+                                <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4 text-foreground">
+                                    {!hasCases ? "System Ready" : 
+                                     cases[0]?.status === 'closed' ? "Case Resolved" : "Active Engagement"}
                                 </h3>
 
-                                <p className="text-muted-foreground leading-relaxed max-w-xl mb-6 text-xs sm:text-sm">
+                                <p className="text-muted-foreground leading-relaxed max-w-xl mb-10 text-sm sm:text-base">
                                     {!hasCases
                                         ? "You haven't submitted any cases yet. Your identity is verified and you are ready to engage with legal professionals when needed."
                                         : "Track your active legal engagements and case progress here."
                                     }
                                 </p>
 
-                                {/* Visual Roadmap Step 0 */}
-                                <div className="flex items-center gap-3 sm:gap-4 mt-6 opacity-80 overflow-x-auto no-scrollbar pb-2">
-                                    <div className="flex flex-col items-center shrink-0">
-                                        <div className="h-3 w-3 rounded-full bg-blue-500 ring-4 ring-blue-500/20"></div>
-                                        <span className="text-[9px] mt-2 font-black uppercase tracking-widest text-blue-300">Verified</span>
-                                    </div>
-                                    <div className="h-[1px] w-8 sm:w-16 bg-white/10 shrink-0"></div>
-                                    <div className="flex flex-col items-center shrink-0 opacity-40">
-                                        <div className="h-2.5 w-2.5 rounded-full bg-white/20"></div>
-                                        <span className="text-[9px] mt-2.5 font-black uppercase tracking-widest">In Review</span>
-                                    </div>
-                                    <div className="h-[1px] w-8 sm:w-16 bg-white/10 shrink-0"></div>
-                                    <div className="flex flex-col items-center shrink-0 opacity-40">
-                                        <div className="h-2.5 w-2.5 rounded-full bg-white/20"></div>
-                                        <span className="text-[9px] mt-2.5 font-black uppercase tracking-widest">Matched</span>
-                                    </div>
+                                {/* Visual Roadmap - Dynamic Lifecycle Tracker */}
+                                <div className="flex items-center mt-6 overflow-hidden">
+                                    {[
+                                        { key: 'submitted', label: 'Verified' },
+                                        { key: 'reviewing', label: 'Reviewing' },
+                                        { key: 'case_open', label: 'Accepted' },
+                                        { key: 'in_progress', label: 'Active' },
+                                        { key: 'closed', label: 'Resolved' }
+                                    ].map((step, idx, arr) => {
+                                        const caseStatus = cases[0]?.status || 'submitted';
+                                        const statusOrder = ['submitted', 'reviewing', 'case_open', 'in_progress', 'closed'];
+                                        const currentStepIdx = statusOrder.indexOf(caseStatus);
+                                        const isCompleted = idx < currentStepIdx;
+                                        const isActive = idx === currentStepIdx;
+                                        
+                                        return (
+                                            <div key={step.key} className={`flex flex-col items-center flex-1 relative ${!isActive && !isCompleted ? 'opacity-30' : ''}`}>
+                                                <div className={`h-4 w-4 rounded-full z-10 transition-all duration-500 ${
+                                                    isActive ? 'bg-primary ring-4 ring-primary/20 scale-125' : 
+                                                    isCompleted ? 'bg-emerald-500' : 'bg-muted-foreground'
+                                                }`}>
+                                                    {isCompleted && <ShieldCheck size={10} className="text-white m-0.5" />}
+                                                </div>
+                                                {idx < arr.length - 1 && (
+                                                    <div className={`absolute top-2 left-1/2 w-full h-[2px] transition-colors duration-500 ${
+                                                        isCompleted ? 'bg-emerald-500/50' : 'bg-border'
+                                                    }`}></div>
+                                                )}
+                                                <span className={`text-[9px] mt-4 font-black uppercase tracking-widest w-full text-center transition-colors duration-300 ${
+                                                    isActive ? 'text-primary' : 'text-muted-foreground'
+                                                }`}>
+                                                    {step.label}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                            {/* Primary CTA - Styled Up */}
+                            {/* Primary CTA */}
                             <Link
                                 to="/cases/new"
-                                className="action-card glass-card group relative overflow-hidden hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-1 block p-6 sm:p-8"
+                                className="bg-primary/10 border border-primary/20 group relative overflow-hidden rounded-[1.5rem] p-6 sm:p-8 block transition-all duration-300 hover:shadow-[0_0_20px_rgba(201,162,77,0.15)] hover:-translate-y-1"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
-                                <div className="relative z-10 text-left">
-                                    <div className="mb-4 bg-blue-500/10 w-12 h-12 rounded-xl flex items-center justify-center text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300">
-                                        <PlusCircle size={24} />
+                                <div className="relative z-10 flex flex-col h-full">
+                                    <div className="mb-6 bg-primary w-14 h-14 rounded-2xl flex items-center justify-center text-primary-foreground shadow-lg transition-transform duration-300 group-hover:scale-110">
+                                        <PlusCircle size={28} />
                                     </div>
-                                    <h3 className="text-lg font-bold mb-2 group-hover:text-blue-200 transition-colors">Report a Case</h3>
-                                    <div className="flex items-end justify-between">
-                                        <p className="text-muted-foreground text-xs m-0 max-w-[80%] leading-relaxed">
+                                    <h3 className="text-xl font-bold mb-2 text-foreground group-hover:text-primary transition-colors">Report a Case</h3>
+                                    <div className="flex items-end justify-between mt-auto pt-4">
+                                        <p className="text-muted-foreground text-sm m-0 max-w-[80%] leading-relaxed">
                                             Securely submit details for immediate legal review.
                                         </p>
-                                        <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all text-blue-400 shrink-0" />
+                                        <ChevronRight size={20} className="text-primary opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all shrink-0" />
                                     </div>
                                 </div>
                             </Link>
 
                             {/* Secondary CTA */}
-                            <button className="action-card glass-card group relative overflow-hidden hover:border-white/30 transition-all duration-300 hover:-translate-y-1 text-left w-full p-6 sm:p-8">
-                                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-
-                                <div className="relative z-10">
-                                    <div className="mb-4 bg-white/5 w-12 h-12 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-white/10 group-hover:text-white transition-colors duration-300">
-                                        <HelpCircle size={24} />
+                            <button className="bg-card border border-border bg-gradient-to-br from-card to-card/50 shadow-neumorph-inset group relative overflow-hidden rounded-[1.5rem] p-6 sm:p-8 text-left w-full transition-all duration-300 hover:border-primary/50 hover:-translate-y-1">
+                                <div className="relative z-10 flex flex-col h-full">
+                                    <div className="mb-6 bg-input border border-border w-14 h-14 rounded-2xl flex items-center justify-center text-muted-foreground transition-colors duration-300 group-hover:text-foreground group-hover:border-primary/30">
+                                        <HelpCircle size={28} />
                                     </div>
-                                    <h3 className="text-lg font-bold mb-2">How it Works</h3>
-                                    <div className="flex items-end justify-between">
-                                        <p className="text-muted-foreground text-xs m-0 max-w-[80%] leading-relaxed">
+                                    <h3 className="text-xl font-bold mb-2 text-foreground">How it Works</h3>
+                                    <div className="flex items-end justify-between mt-auto pt-4">
+                                        <p className="text-muted-foreground text-sm m-0 max-w-[80%] leading-relaxed">
                                             Security, privacy, and full engagement lifecycle.
                                         </p>
-                                        <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all text-slate-400 shrink-0" />
+                                        <ChevronRight size={20} className="text-muted-foreground opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all shrink-0" />
                                     </div>
                                 </div>
                             </button>
@@ -163,64 +238,64 @@ export default function Dashboard() {
                     </div>
 
                     {/* Sidebar / Activity Column */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 sm:space-y-8">
                         {/* Profile Quick Link */}
-                        <div className="sidebar-item glass-card bg-gradient-to-b from-white/5 to-transparent p-5 sm:p-6 text-left">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-1">Quick Actions</h3>
+                        <div className="bg-card border border-border shadow-neumorph rounded-[1.5rem] p-6 text-left relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Quick Actions</h3>
                             </div>
-                            <ul className="space-y-2">
+                            <ul className="space-y-3">
                                 <li>
-                                    <button onClick={() => navigate('/profile')} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-xs font-bold text-slate-300 group text-left">
-                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                                            <UserIconMini className="text-slate-500 group-hover:text-blue-400 transition-colors" />
+                                    <button onClick={() => navigate('/profile')} className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-input border border-transparent hover:border-border shadow-sm hover:shadow-neumorph-inset transition-all text-sm font-bold text-foreground group text-left">
+                                        <div className="w-10 h-10 rounded-lg bg-input flex items-center justify-center shrink-0 border border-border group-hover:border-primary/30 group-hover:text-primary transition-colors">
+                                            <UserIconMini className="text-muted-foreground group-hover:text-primary transition-colors" />
                                         </div>
                                         Personal Profile
-                                        <ChevronRight size={14} className="ml-auto opacity-30 group-hover:opacity-100 transition-opacity" />
+                                        <ChevronRight size={16} className="ml-auto opacity-30 group-hover:opacity-100 group-hover:text-primary transition-all group-hover:translate-x-1" />
                                     </button>
                                 </li>
                                 <li>
-                                    <button onClick={() => navigate('/settings')} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-xs font-bold text-slate-300 group text-left">
-                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                                            <SettingsIcon size={16} className="text-slate-500 group-hover:text-blue-400 transition-colors" />
+                                    <button onClick={() => navigate('/settings')} className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-input border border-transparent hover:border-border shadow-sm hover:shadow-neumorph-inset transition-all text-sm font-bold text-foreground group text-left">
+                                        <div className="w-10 h-10 rounded-lg bg-input flex items-center justify-center shrink-0 border border-border group-hover:border-primary/30 group-hover:text-primary transition-colors">
+                                            <SettingsIcon size={18} className="text-muted-foreground group-hover:text-primary transition-colors" />
                                         </div>
                                         Identity & Security
-                                        <ChevronRight size={14} className="ml-auto opacity-30 group-hover:opacity-100 transition-opacity" />
+                                        <ChevronRight size={16} className="ml-auto opacity-30 group-hover:opacity-100 group-hover:text-primary transition-all group-hover:translate-x-1" />
                                     </button>
                                 </li>
                             </ul>
                         </div>
 
                         {/* Activity Feed */}
-                        <div className="sidebar-item text-left">
-                            <h2 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 flex items-center gap-2 pl-2">
-                                <Clock size={16} />
+                        <div className="bg-card/50 border border-border shadow-neumorph-inset rounded-[1.5rem] p-6 text-left">
+                            <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Clock size={14} className="text-primary" />
                                 Recent Activity
                             </h2>
 
                             <div className="space-y-3">
                                 {activity.length === 0 ? (
-                                    <div className="glass-card flex flex-col items-center justify-center py-10 text-center border-dashed border-white/10 bg-transparent min-h-[200px]">
-                                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-3">
-                                            <FileText size={18} className="text-muted-foreground/30" />
+                                    <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-border rounded-xl bg-card/50 min-h-[200px]">
+                                        <div className="w-12 h-12 rounded-full bg-input border border-border flex items-center justify-center mb-4">
+                                            <FileText size={20} className="text-muted-foreground/50" />
                                         </div>
-                                        <p className="text-muted-foreground m-0 text-xs font-medium">No recent activity logged</p>
+                                        <p className="text-muted-foreground m-0 text-sm font-medium">No recent activity logged</p>
                                     </div>
                                 ) : (
                                     activity.map((item) => (
-                                        <div key={item.id} className="glass-card p-4 hover:border-blue-500/30 transition-all group relative overflow-hidden">
+                                        <div key={item.id} className="bg-card border border-border rounded-xl p-4 hover:border-primary/50 transition-all group relative overflow-hidden shadow-sm">
                                             <div className="flex items-start gap-4">
-                                                <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0 border border-blue-500/20 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
-                                                    <Bell size={16} />
+                                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 border border-primary/20 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                                                    <Bell size={18} />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-xs font-bold text-white mb-1 truncate group-hover:text-blue-300 transition-colors">{item.payload.title}</p>
-                                                    <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed italic">"{item.payload.message}"</p>
-                                                    <div className="flex items-center gap-2 mt-3">
-                                                        <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full tracking-wider border border-blue-400/20">
-                                                            {item.event_type.replace(/_/g, ' ')}
-                                                        </span>
-                                                        <span className="text-[8px] text-slate-600 font-black tracking-widest uppercase">
+                                                    <p className="text-sm font-bold text-foreground mb-1 mt-0.5 truncate group-hover:text-primary transition-colors">{item.message}</p>
+                                                    <div className="flex items-center gap-2 mt-2">
+                                                        {item.read === false && (
+                                                            <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0"></span>
+                                                        )}
+                                                        <span className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase">
                                                             {new Date(item.created_at).toLocaleDateString()}
                                                         </span>
                                                     </div>
@@ -230,9 +305,11 @@ export default function Dashboard() {
                                     ))
                                 )}
                                 {activity.length > 0 && (
-                                    <Link to="/notifications" className="block text-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-blue-400 transition-colors pt-3">
-                                        View Full Trail
-                                    </Link>
+                                    <div className="pt-4 border-t border-border mt-4">
+                                        <Link to="/notifications" className="block text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+                                            View Full Trail
+                                        </Link>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -240,7 +317,7 @@ export default function Dashboard() {
 
                 </div>
             </div>
-        </>
+        </div >
     );
 }
 

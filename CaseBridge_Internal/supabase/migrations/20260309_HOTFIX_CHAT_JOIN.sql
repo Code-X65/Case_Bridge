@@ -1,11 +1,3 @@
--- ==========================================
--- HOTFIX: CHAT RELATIONSHIPS & METADATA VIEW
--- ==========================================
-
--- This view provides a unified way to fetch messages with sender metadata
--- without requiring problematic direct foreign keys that would conflict
--- between staff and client roles.
-
 CREATE OR REPLACE VIEW public.matter_messages_view AS
 SELECT 
     m.*,

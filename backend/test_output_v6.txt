@@ -1,0 +1,22 @@
+﻿[dotenv@17.3.1] injecting env (6) from .env -- tip: ≡ƒñû agentic secret storage: https://dotenvx.com/as2
+--- Testing getMatters query ---
+
+--- Testing getMatterDocuments (matter_updates join) ---
+matter_updates join Success
+
+--- Checking Table Existence ---
+Table profiles: EXISTS (1 rows sample)
+  Columns: id, email, full_name, role, status, onboarding_state, first_login_flag, created_at, calendly_url, avatar_url, phone_number, timezone, preferred_meeting_type, primary_calendar_provider, firm_id, calendar_sync_token, preferences, failed_attempts, last_attempt_at
+Table external_users: EXISTS (1 rows sample)
+  Columns: id, email, first_name, last_name, phone, country, avatar_url, status, created_at, updated_at
+Table client_profiles: EXISTS (0 rows sample)
+Table notifications: EXISTS (1 rows sample)
+  Columns: id, user_id, created_at, channel, event_type, payload, read_at, sent_at, firm_id, is_read, type, title, message, related_case_id, related_report_id, metadata, link_path, read
+Table client_notifications: EXISTS (0 rows sample)
+Table matter_messages: EXISTS (1 rows sample)
+  Columns: id, matter_id, sender_id, content, created_at, is_read, read_at, attachments, reply_to_id, mentions
+Table matter_messages_view: EXISTS (1 rows sample)
+  Columns: id, matter_id, sender_id, content, created_at, is_read, read_at, attachments, reply_to_id, mentions, sender_name, sender_role, sender_type, reply_content, reply_sender_name
+Table calendar_events: EXISTS (0 rows sample)
+Table calendar_participants: EXISTS (0 rows sample)
+Table firm_locations: EXISTS (0 rows sample)

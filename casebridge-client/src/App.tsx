@@ -33,15 +33,30 @@ import ContactPage from './pages/visitor/ContactPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { ConnectivityProvider } from './contexts/ConnectivityContext';
+import { ToastProvider } from './components/common/ToastService';
+import NetworkStatus from './components/common/NetworkStatus';
+import NotificationDispatcher from './components/common/NotificationDispatcher';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 30, // 30 seconds
+      gcTime: 1000 * 60 * 10, // 10 minutes
+      refetchOnWindowFocus: true, // Keep this true for background sync on tab focus
+      retry: 2,
+    },
+  },
+});
 
 function App() {
   return (
     <ConnectivityProvider>
-      <AuthProvider>
-        <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
+      <ToastProvider>
+        <AuthProvider>
+          <QueryClientProvider client={queryClient}>
+            <NotificationDispatcher />
+            <NetworkStatus />
+            <BrowserRouter>
             <Routes>
               <Route element={<PublicRoute />}>
                 <Route path="/signup" element={<Signup />} />
@@ -86,8 +101,9 @@ function App() {
           </BrowserRouter>
         </QueryClientProvider>
       </AuthProvider>
-    </ConnectivityProvider>
-  );
+    </ToastProvider>
+  </ConnectivityProvider>
+);
 }
 
 export default App;

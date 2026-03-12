@@ -1,0 +1,8 @@
+﻿[dotenv@17.3.1] injecting env (6) from .env -- tip: ΓÜÖ∩╕Å  override existing env vars with { override: true }
+--- Testing getMatters query ---
+getMatters Success: Data found
+
+--- Testing getMatterDocuments (matter_updates join) ---
+matter_updates join Success
+
+--- Testing getMatterDocuments (case_report_documents join) ---

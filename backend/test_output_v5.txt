@@ -1,0 +1,60 @@
+﻿[dotenv@17.3.1] injecting env (6) from .env -- tip: ≡ƒöÉ encrypt with Dotenvx: https://dotenvx.com
+--- Testing getMatters query ---
+getMatters Success: Data found
+Sample matter: {
+  "id": "50eb475a-01a5-4acd-a130-8eb094e3e5cb",
+  "firm_id": "6e4d8ef7-2c36-4689-8541-5e01e8f57692",
+  "client_id": "af9d66ff-7140-4c8b-9d68-0ab1fb88d766",
+  "case_report_id": "c8b92241-a6ed-46b9-88d8-b9a375b6bf1a",
+  "matter_number": "MAT-2026-0011",
+  "title": "I want to divorce my husband",
+  "description": "something like that",
+  "internal_notes": null,
+  "lifecycle_state": "submitted",
+  "priority": "medium",
+  "assigned_associate": "eced6943-cf39-4bc8-83fc-7ab00f8f6b62",
+  "assigned_case_manager": "80193de2-90d4-447e-917a-e2c3aca67594",
+  "created_by": "2817a799-8116-4093-a43e-bef342f0893d",
+  "created_at": "2026-03-06T19:05:52.081773+00:00",
+  "updated_at": "2026-03-06T19:05:52.081773+00:00",
+  "pipeline_id": null,
+  "current_stage_id": null,
+  "current_pipeline_stage_id": null,
+  "adverse_parties": [],
+  "resolution_summary": null,
+  "closed_at": null,
+  "is_chat_enabled": false,
+  "assignee": {
+    "id": "eced6943-cf39-4bc8-83fc-7ab00f8f6b62",
+    "email": "fikeg75054@pckage.com",
+    "full_name": "Williams Stephen"
+  },
+  "case_manager": {
+    "id": "80193de2-90d4-447e-917a-e2c3aca67594",
+    "full_name": "Jane Okafor"
+  },
+  "client": {
+    "id": "af9d66ff-7140-4c8b-9d68-0ab1fb88d766",
+    "email": "bisim45542@medevsa.com",
+    "phone": "08061936756",
+    "last_name": "Mary",
+    "first_name": "Olabisi"
+  }
+}
+
+--- Testing getMatterDocuments (matter_updates join) ---
+matter_updates join Success
+
+--- Checking Table Existence ---
+Table profiles: EXISTS (1 rows sample)
+  Columns: id, email, full_name, role, status, onboarding_state, first_login_flag, created_at, calendly_url, avatar_url, phone_number, timezone, preferred_meeting_type, primary_calendar_provider, firm_id, calendar_sync_token, preferences, failed_attempts, last_attempt_at
+Table external_users: EXISTS (1 rows sample)
+  Columns: id, email, first_name, last_name, phone, country, avatar_url, status, created_at, updated_at
+Table client_profiles: EXISTS (0 rows sample)
+Table notifications: EXISTS (1 rows sample)
+  Columns: id, user_id, created_at, channel, event_type, payload, read_at, sent_at, firm_id, is_read, type, title, message, related_case_id, related_report_id, metadata, link_path, read
+Table client_notifications: EXISTS (0 rows sample)
+Table matter_messages: EXISTS (1 rows sample)
+  Columns: id, matter_id, sender_id, content, created_at, is_read, read_at, attachments, reply_to_id, mentions
+Table matter_messages_view: EXISTS (1 rows sample)
+  Columns: id, matter_id, sender_id, content, created_at, is_read, read_at, attachments, reply_to_id, mentions, sender_name, sender_role, sender_type, reply_content, reply_sender_name

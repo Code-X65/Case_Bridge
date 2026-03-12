@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { useQuery } from '@tanstack/react-query';
 import {
     PlusCircle,
     HelpCircle,
@@ -10,77 +10,80 @@ import {
     ShieldCheck,
     FileText,
     Bell,
-    PenTool
+    PenTool,
+    Loader2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-    const [userName, setUserName] = useState('');
-    const [cases, setCases] = useState<any[]>([]);
-    const [activity, setActivity] = useState<any[]>([]);
-    const [pendingSignatures, setPendingSignatures] = useState<any[]>([]);
+    const { data: dashboardData, isLoading } = useQuery({
+        queryKey: ['dashboard', user?.id],
+        enabled: !!user,
+        queryFn: async () => {
+            // 1. Fetch Profile
+            const { data: profile } = await supabase
+                .from('external_users')
+                .select('first_name')
+                .eq('id', user!.id)
+                .single();
 
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!user) return;
+            // 2. Fetch Matters & Reports with error handling
+            const [reportsRes, mattersRes, notifsRes, sigRes] = await Promise.all([
+                fetch(`${API_URL}/workspace/reports?client_id=${user!.id}`),
+                fetch(`${API_URL}/matters?client_id=${user!.id}`),
+                fetch(`${API_URL}/workspace/notifications?client_id=${user!.id}&limit=5`),
+                fetch(`${API_URL}/workspace/signatures?client_id=${user!.id}&status=pending`)
+            ]);
 
-            try {
-                // 1. Fetch Profile
-                const { data: profile } = await supabase
-                    .from('external_users')
-                    .select('first_name')
-                    .eq('id', user.id)
-                    .single();
+            // Parse responses with error handling
+            const parseJson = async (res: Response) => {
+                if (!res.ok) {
+                    console.error(`API error: ${res.status} ${res.statusText}`);
+                    return { success: false, data: [] };
+                }
+                return res.json();
+            };
 
-                setUserName(profile?.first_name || user?.user_metadata?.first_name || 'Client');
+            const [reportsResult, mattersResult, notifsResult, sigResult] = await Promise.all([
+                parseJson(reportsRes),
+                parseJson(mattersRes),
+                parseJson(notifsRes),
+                parseJson(sigRes)
+            ]);
 
-                const { data: casesData } = await supabase
-                    .from('case_reports')
-                    .select('id, title, status, created_at')
-                    .eq('client_id', user.id);
+            // Deduplicate: If a matter exists for a report, hide the report
+            const mattersData = mattersResult.data || [];
+            const casesData = reportsResult.data || [];
+            const convertedReportIds = new Set(mattersData.map((m: any) => m.case_report_id).filter(Boolean));
+            const uniqueReports = casesData.filter((r: any) => !convertedReportIds.has(r.id));
+            
+            const allCombined = [...uniqueReports, ...mattersData].sort((a: any, b: any) => 
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
 
-                const { data: mattersData } = await supabase
-                    .from('matters')
-                    .select('id, title, status:lifecycle_state, created_at, case_report_id')
-                    .eq('client_id', user.id);
+            return {
+                userName: profile?.first_name || user?.user_metadata?.first_name || 'Client',
+                cases: allCombined,
+                activity: notifsResult.data || [],
+                pendingSignatures: sigResult.data || []
+            };
+        }
+    });
 
-                // Deduplicate: If a matter exists for a report, hide the report
-                const convertedReportIds = new Set(mattersData?.map(m => m.case_report_id).filter(Boolean));
-                const uniqueReports = (casesData || []).filter(r => !convertedReportIds.has(r.id));
-                const allCombined = [...uniqueReports, ...(mattersData || [])].sort((a,b) => 
-                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                );
+    if (isLoading) {
+        return (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                <p className="text-muted-foreground font-bold tracking-widest uppercase text-xs animate-pulse">Synchronizing Workspace...</p>
+            </div>
+        );
+    }
 
-                setCases(allCombined);
-
-                // 3. Fetch Recent Activity (Notifications)
-                const { data: notifs } = await supabase
-                    .from('client_notifications')
-                    .select('*')
-                    .eq('client_id', user.id)
-                    .order('created_at', { ascending: false })
-                    .limit(5);
-
-                setActivity(notifs || []);
-
-                // 4. Fetch Pending Signature Requests
-                const { data: sigRequests } = await supabase
-                    .from('signature_requests')
-                    .select('id, message, created_at, document:document_id(filename)')
-                    .eq('client_id', user.id)
-                    .eq('status', 'pending');
-                setPendingSignatures(sigRequests || []);
-
-            } catch (err) {
-                console.error("Dashboard Fetch Error", err);
-            }
-        };
-        fetchData();
-    }, [user]);
-
+    const { userName, cases, activity, pendingSignatures } = dashboardData || { userName: '', cases: [], activity: [], pendingSignatures: [] };
     const hasCases = cases.length > 0;
 
     return (
@@ -103,7 +106,7 @@ export default function Dashboard() {
                                 You have <strong>{pendingSignatures.length}</strong> document{pendingSignatures.length > 1 ? 's' : ''} awaiting your signature.
                             </p>
                             <div className="flex flex-wrap gap-2">
-                                {pendingSignatures.map(req => (
+                                {pendingSignatures.map((req: any) => (
                                     <Link
                                         key={req.id}
                                         to={`/sign/${req.id}`}
@@ -283,7 +286,7 @@ export default function Dashboard() {
                                         <p className="text-muted-foreground m-0 text-sm font-medium">No recent activity logged</p>
                                     </div>
                                 ) : (
-                                    activity.map((item) => (
+                                    activity.map((item: any) => (
                                         <div key={item.id} className="bg-card border border-border rounded-xl p-4 hover:border-primary/50 transition-all group relative overflow-hidden shadow-sm">
                                             <div className="flex items-start gap-4">
                                                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 border border-primary/20 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">

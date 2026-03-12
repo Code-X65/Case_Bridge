@@ -40,30 +40,49 @@ export default function MatterChat({ matterId }: MatterChatProps) {
     const [sending, setSending] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    // Use API_URL from env, with development fallback
+    const API_URL = import.meta.env.VITE_API_URL || 
+        (import.meta.env.DEV ? 'http://localhost:5000/api' : undefined);
+    
+    if (!API_URL) {
+        throw new Error('VITE_API_URL is not configured. Please set it in your environment variables.');
+    }
+
     useEffect(() => {
         const fetchMessages = async () => {
             setLoading(true);
             
-            const { data, error } = await supabase
-                .from('matter_messages_view')
-                .select('*')
-                .eq('matter_id', matterId)
-                .order('created_at', { ascending: true });
+            // Fetch messages from the API
+            try {
+                const response = await fetch(`${API_URL}/matters/${matterId}/messages`);
+                if (!response.ok) {
+                    console.error(`Failed to fetch messages: ${response.status}`);
+                    setMessages([]);
+                    setLoading(false);
+                    return;
+                }
+                const result = await response.json();
 
-            if (error) {
-                console.error("Error fetching messages:", error);
-            } else {
-                const formattedMessages = (data || []).map(msg => ({
-                    ...msg,
-                    sender: {
-                        full_name: msg.sender_name,
-                        role: msg.sender_role
+                if (result.success) {
+                    const formattedMessages = (result.data || []).map((msg: any) => ({
+                        ...msg,
+                        sender: {
+                            full_name: msg.sender_name,
+                            role: msg.sender_role
+                        }
+                    }));
+                    setMessages(formattedMessages);
+                    
+                    // Mark as read via API
+                    const readRes = await fetch(`${API_URL}/matters/${matterId}/messages/read`, {
+                        method: 'PATCH'
+                    });
+                    if (!readRes.ok) {
+                        console.error(`Failed to mark messages as read: ${readRes.status}`);
                     }
-                }));
-                setMessages(formattedMessages);
-                
-                // Mark as read if not sent by me
-                await supabase.rpc('mark_matter_messages_read', { p_matter_id: matterId });
+                }
+            } catch (error) {
+                console.error("Error fetching messages via API:", error);
             }
             
             setLoading(false);
@@ -135,18 +154,30 @@ export default function MatterChat({ matterId }: MatterChatProps) {
 
         setSending(true);
         try {
-            const { error } = await supabase
-                .from('matter_messages')
-                .insert({
-                    matter_id: matterId,
+            const response = await fetch(`${API_URL}/matters/${matterId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
                     sender_id: user.user_id,
-                    content: newMessage.trim(),
-                    reply_to_id: replyTo?.id || null
-                });
+                    content: newMessage,
+                    reply_to_id: replyTo?.id
+                })
+            });
 
-            if (error) throw error;
-            setNewMessage('');
-            setReplyTo(null);
+            if (!response.ok) {
+                console.error(`Failed to send message: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (!result.success) {
+                console.error("Error sending message via API:", result.error);
+            } else {
+                setNewMessage('');
+                setReplyTo(null);
+            }
         } catch (error) {
             console.error("Error sending message:", error);
         } finally {

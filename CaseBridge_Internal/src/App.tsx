@@ -40,6 +40,7 @@ import InternalDocumentVault from './pages/internal/InternalDocumentVault';
 
 import ClientLoginPage from './pages/client/ClientLoginPage';
 import ClientDashboard from './pages/client/ClientDashboard';
+import InternalNotificationDispatcher from './components/common/InternalNotificationDispatcher';
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
+        <InternalNotificationDispatcher />
         <ConfirmDialogProvider>
           <BrowserRouter>
             <SessionExpiryWarning />

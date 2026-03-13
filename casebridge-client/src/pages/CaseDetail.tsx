@@ -37,21 +37,26 @@ export default function CaseDetail() {
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'timeline' | 'messages' | 'audit' | 'vault'>('timeline');
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    // We've unified the backend into Supabase and Edge Functions.
+    // Legacy API_URL is no longer needed for CRUD.
 
     // 1. Fetch Matter Detail
     const { data: matter, isLoading: matterLoading, isError, refetch } = useQuery({
         queryKey: ['matter', id],
         enabled: !!id && !!user,
         queryFn: async () => {
-            const res = await fetch(`${API_URL}/matters/${id}`);
-            if (!res.ok) {
-                const errorText = await res.text();
-                throw new Error(`Failed to fetch matter: ${res.status} - ${errorText}`);
-            }
-            const result = await res.json();
-            if (!result.success) throw new Error(result.error?.message || 'Failed to fetch matter');
-            return result.data;
+            const { data, error } = await supabase
+                .from('matters')
+                .select(`
+                    *,
+                    case_report:case_reports(*),
+                    assignee:profiles!assigned_associate(full_name)
+                `)
+                .eq('id', id!)
+                .single();
+
+            if (error) throw error;
+            return data;
         }
     });
 
@@ -60,13 +65,21 @@ export default function CaseDetail() {
         queryKey: ['matter_updates', id],
         enabled: !!id && !!user,
         queryFn: async () => {
-            const res = await fetch(`${API_URL}/matters/${id}/updates`);
-            if (!res.ok) {
-                const errorText = await res.text();
-                throw new Error(`Failed to fetch updates: ${res.status}`);
-            }
-            const result = await res.json();
-            return result.data || [];
+            const { data, error } = await supabase
+                .from('matter_updates')
+                .select(`
+                    *,
+                    docs:report_documents(
+                        client_visible,
+                        document:documents(id, filename, file_url)
+                    )
+                `)
+                .eq('matter_id', id!)
+                .eq('client_visible', true)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return data || [];
         }
     });
 
@@ -75,13 +88,15 @@ export default function CaseDetail() {
         queryKey: ['pending_signatures', user?.id],
         enabled: !!user && !!id,
         queryFn: async () => {
-            const res = await fetch(`${API_URL}/workspace/signatures?client_id=${user?.id}&status=pending`);
-            if (!res.ok) {
-                const errorText = await res.text();
-                throw new Error(`Failed to fetch signatures: ${res.status}`);
-            }
-            const result = await res.json();
-            return (result.data || []).filter((s: any) => s.matter_id === id);
+            const { data, error } = await supabase
+                .from('signature_requests')
+                .select(`*, document:document_id(id, filename)`)
+                .eq('client_id', user!.id)
+                .eq('matter_id', id!)
+                .eq('status', 'pending');
+
+            if (error) throw error;
+            return data || [];
         }
     });
 
@@ -90,12 +105,15 @@ export default function CaseDetail() {
         queryKey: ['unread_count', id],
         enabled: !!id,
         queryFn: async () => {
-            const response = await fetch(`${API_URL}/matters/${id}/messages/unread-count`);
-            if (!response.ok) {
-                return 0; // Return default on error to not break UI
-            }
-            const result = await response.json();
-            return result.count || 0;
+            const { count, error } = await supabase
+                .from('matter_messages')
+                .select('*', { count: 'exact', head: true })
+                .eq('matter_id', id!)
+                .eq('is_read', false)
+                .neq('sender_id', user?.id || '');
+
+            if (error) return 0;
+            return count || 0;
         }
     });
     // 5. Check if reviewed
@@ -117,12 +135,27 @@ export default function CaseDetail() {
         queryKey: ['matter_documents', id],
         enabled: !!id,
         queryFn: async () => {
-            const res = await fetch(`${API_URL}/matters/${id}/documents`);
-            if (!res.ok) {
-                return []; // Return empty on error
-            }
-            const result = await res.json();
-            return result.data || [];
+            // Fetch documents from messages
+            const { data: messageDocs } = await supabase
+                .from('message_documents')
+                .select('document:documents(id, filename, file_url, uploaded_at)')
+                .eq('message_id', id!);
+
+             // Fetch documents from reports
+             const { data: reportDocs } = await supabase
+                .from('report_documents')
+                .select('document:documents(id, filename, file_url, uploaded_at)')
+                .eq('client_visible', true); // This needs a join with matter_updates usually
+
+            // Simple version for now: get all documents associated with matters where client exists
+            const { data, error } = await supabase
+                .from('documents')
+                .select('*')
+                .eq('matter_id', id!)
+                .order('uploaded_at', { ascending: false });
+
+            if (error) return [];
+            return data.map(d => ({ document: d, source: 'Vault' })) || [];
         }
     });
 
@@ -131,12 +164,19 @@ export default function CaseDetail() {
         queryKey: ['matter_history', id],
         enabled: !!id,
         queryFn: async () => {
-            const res = await fetch(`${API_URL}/matters/${id}/history`);
-            if (!res.ok) {
-                return [];
-            }
-            const result = await res.json();
-            return result.data || [];
+            const { data, error } = await supabase
+                .from('audit_logs')
+                .select('*')
+                .eq('matter_id', id!)
+                .order('created_at', { ascending: false });
+
+            if (error) return [];
+            return data.map((d: any) => ({
+                id: d.id,
+                type: d.event_type,
+                event: d.description || d.event_type.replace(/_/g, ' '),
+                created_at: d.created_at
+            })) || [];
         }
     });
 
@@ -182,12 +222,12 @@ export default function CaseDetail() {
     // Clear unread count when switching to messages tab
     useEffect(() => {
         if (activeTab === 'messages' && id) {
-            // Mark as read via API
-            fetch(`${API_URL}/matters/${id}/messages/read`, { method: 'PATCH' })
+            // Mark as read via RPC
+            supabase.rpc('mark_matter_messages_read', { p_matter_id: id })
                 .then(() => queryClient.invalidateQueries({ queryKey: ['unread_count', id] }))
-                .catch(err => console.error("Error marking messages read via API:", err));
+                .catch(err => console.error("Error marking messages read via Supabase:", err));
         }
-    }, [activeTab, id, queryClient, API_URL]);
+    }, [activeTab, id, queryClient]);
      const report = matter?.case_report;
      const loading = matterLoading;
 

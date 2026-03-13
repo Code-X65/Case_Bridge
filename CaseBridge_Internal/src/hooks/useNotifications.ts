@@ -1,26 +1,34 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useInternalSession } from './useInternalSession';
+import { useToast } from '@/components/common/ToastService';
+
+export type NotificationCategory = 'matter_updates' | 'billing' | 'assignments' | 'system' | 'all';
 
 export interface Notification {
     id: string;
     event_type: string;
-    channel: 'email' | 'in_app';
+    channel: 'email' | 'in_app' | 'push';
+    category?: NotificationCategory;
     payload: {
         title: string;
         message: string;
         link?: string;
+        category?: NotificationCategory;
     };
     sent_at: string;
     read_at: string | null;
     created_at: string;
+    archived_at: string | null;
 }
 
-export function useNotifications() {
+export function useNotifications(initialCategory: NotificationCategory = 'all') {
     const { session } = useInternalSession();
+    const { toast } = useToast();
     const queryClient = useQueryClient();
+    const [categoryFilter, setCategoryFilter] = useState<NotificationCategory>(initialCategory);
 
     const { data: notifications, isLoading } = useQuery({
         queryKey: ['notifications', session?.user_id],
@@ -30,16 +38,20 @@ export function useNotifications() {
                 .from('notifications')
                 .select('*')
                 .eq('user_id', session!.user_id)
-                .eq('channel', 'in_app') // Only fetch in-app for the UI
+                .is('archived_at', null)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
             return data as Notification[];
         },
-        staleTime: 1000 * 60 * 30, // 30 minutes - relying on realtime
+        staleTime: 1000 * 60 * 5, 
     });
 
-    // Real-time subscription to notifications
+    const filteredNotifications = notifications?.filter(n => {
+        if (categoryFilter === 'all') return true;
+        return n.payload.category === categoryFilter || n.category === categoryFilter;
+    });
+
     useEffect(() => {
         if (!session?.user_id) return;
 
@@ -48,36 +60,17 @@ export function useNotifications() {
             .on(
                 'postgres_changes',
                 {
-                    event: 'INSERT',
+                    event: '*',
                     schema: 'public',
                     table: 'notifications',
                     filter: `user_id=eq.${session.user_id}`
                 },
                 (payload) => {
-                    // Update the cache immediately with the new notification
-                    queryClient.setQueryData(['notifications', session.user_id], (old: Notification[] | undefined) => {
+                    if (payload.eventType === 'INSERT') {
                         const newNotif = payload.new as Notification;
-                        if (!old) return [newNotif];
-                        // Avoid duplicates if any
-                        if (old.find(n => n.id === newNotif.id)) return old;
-                        return [newNotif, ...old];
-                    });
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'notifications',
-                    filter: `user_id=eq.${session.user_id}`
-                },
-                (payload) => {
-                    // Update existing notification (e.g. mark as read)
-                    queryClient.setQueryData(['notifications', session.user_id], (old: Notification[] | undefined) => {
-                        if (!old) return [];
-                        return old.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n);
-                    });
+                        toast(newNotif.payload.title || 'Institutional Alert', 'info');
+                    }
+                    queryClient.invalidateQueries({ queryKey: ['notifications', session.user_id] });
                 }
             )
             .subscribe();
@@ -85,7 +78,7 @@ export function useNotifications() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [session?.user_id, queryClient]);
+    }, [session?.user_id, queryClient, toast]);
 
     const markAsRead = useMutation({
         mutationFn: async (id: string) => {
@@ -114,13 +107,30 @@ export function useNotifications() {
         }
     });
 
+    const archiveNotification = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase
+                .from('notifications')
+                .update({ archived_at: new Date().toISOString() })
+                .eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        }
+    });
+
     const unreadCount = notifications?.filter(n => !n.read_at).length || 0;
 
     return {
-        notifications,
+        notifications: filteredNotifications,
+        allNotifications: notifications,
         isLoading,
         unreadCount,
+        categoryFilter,
+        setCategoryFilter,
         markAsRead,
-        markAllAsRead
+        markAllAsRead,
+        archiveNotification
     };
 }

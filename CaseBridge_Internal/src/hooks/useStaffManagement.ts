@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { staffApi } from '@/lib/staffApi';
 import type { UserRole, Invitation } from '@/types/internal';
 
 export function useStaffManagement(firmId: string | undefined) {
@@ -12,7 +13,7 @@ export function useStaffManagement(firmId: string | undefined) {
         queryFn: async () => {
             const { data } = await supabase
                 .from('user_firm_roles')
-                .select('id, user_id, status, role, profiles:user_id(id, full_name, email, onboarding_state, status)')
+                .select('id, user_id, status, role, profiles!user_firm_roles_user_id_fkey(id, full_name, email, onboarding_state, status)')
                 .eq('firm_id', firmId!)
                 .neq('status', 'deleted');
             return (data as unknown as UserRole[]) || [];
@@ -68,13 +69,16 @@ export function useStaffManagement(firmId: string | undefined) {
 
     const toggleStaffStatus = useMutation({
         mutationFn: async ({ userId, status }: { userId: string, status: string }) => {
-            const { data, error } = await supabase.rpc('set_staff_status', {
-                p_user_id: userId,
-                p_status: status,
-                p_firm_id: firmId
-            });
-            if (error) throw error;
-            return data;
+            return staffApi.toggleStatus(userId, status, firmId!, queryClient.getQueryData<any>(['internal_session'])?.user_id);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['firm_users'] });
+        }
+    });
+
+    const updateStaffRole = useMutation({
+        mutationFn: async ({ userId, role }: { userId: string, role: string }) => {
+            return staffApi.updateRole(userId, role, firmId!, queryClient.getQueryData<any>(['internal_session'])?.user_id);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['firm_users'] });
@@ -83,12 +87,8 @@ export function useStaffManagement(firmId: string | undefined) {
 
     const deleteStaff = useMutation({
         mutationFn: async (userId: string) => {
-            const { data, error } = await supabase.rpc('delete_staff_member_native', {
-                p_user_id: userId,
-                p_firm_id: firmId
-            });
-            if (error) throw error;
-            return data;
+            const adminSession = queryClient.getQueryData<any>(['internal_session']);
+            return staffApi.deleteStaff(userId, firmId!, adminSession?.user_id, adminSession?.role);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['firm_users'] });
@@ -103,6 +103,7 @@ export function useStaffManagement(firmId: string | undefined) {
         revokeInvite,
         resendInvite,
         toggleStaffStatus,
+        updateStaffRole,
         deleteStaff
     };
 }

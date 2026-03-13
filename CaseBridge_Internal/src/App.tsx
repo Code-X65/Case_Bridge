@@ -33,6 +33,7 @@ import MyMattersPage from './pages/internal/MyMattersPage';
 import MyTasksPage from './pages/internal/MyTasksPage';
 import MatterWorkspace from './pages/internal/matters/MatterWorkspace';
 import NotificationsPage from './pages/internal/NotificationsPage';
+import NotificationSettings from './pages/internal/NotificationSettings';
 import ProfileSettings from './pages/internal/ProfileSettings';
 import InternalCalendar from './pages/internal/InternalCalendar';
 import InternalSchedulePage from './pages/internal/InternalSchedulePage';
@@ -123,6 +124,7 @@ function App() {
               <Route path="/internal/subscription-plans" element={<ProtectedRoute><SubscriptionPlansPage /></ProtectedRoute>} />
               <Route path="/internal/security" element={<ProtectedRoute><FirmSettingsPage /></ProtectedRoute>} />
               <Route path="/internal/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+              <Route path="/internal/notifications/settings" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
               <Route path="/internal/approval-queue" element={<ProtectedRoute><ApprovalQueuePage /></ProtectedRoute>} />
               <Route path="/internal/managed-matters" element={<ProtectedRoute><MyManagedMatters /></ProtectedRoute>} />
               <Route path="/internal/matter/:id" element={<ProtectedRoute><MatterWorkspace /></ProtectedRoute>} />

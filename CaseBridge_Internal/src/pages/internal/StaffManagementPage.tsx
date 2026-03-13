@@ -32,13 +32,19 @@ export default function StaffManagementPage() {
         });
     };
 
+    const isAdminUser = session?.role === 'admin_manager' || session?.role === 'admin';
+
     const handleToggleStatus = async (userId: string, status: string, role: string) => {
+        if (!isAdminUser) {
+            toast('Only administrators can change staff status', 'error');
+            return;
+        }
         if (role === 'admin_manager') return;
-        const confirmed = await confirm({ title: 'Change Status', message: status === 'suspended' ? 'Suspend this staff member?' : 'Reactivate this staff member?', confirmText: status === 'suspended' ? 'Suspend' : 'Reactivate', isDangerous: status === 'suspended' });
+        const confirmed = await confirm({ title: 'Change Status', message: status === 'blocked' ? 'Suspend this staff member?' : 'Reactivate this staff member?', confirmText: status === 'blocked' ? 'Suspend' : 'Reactivate', isDangerous: status === 'blocked' });
         if (confirmed) {
             toggleStaffStatus.mutate({ userId, status }, {
                 onSuccess: () => {
-                    toast(`Staff ${status === 'suspended' ? 'suspended' : 'reactivated'} successfully`, 'success');
+                    toast(`Staff ${status === 'blocked' ? 'suspended' : 'reactivated'} successfully`, 'success');
                     setActionMenuId(null);
                 },
                 onError: (err: any) => toast(`Update failed: ${err.message}`, 'error')
@@ -47,6 +53,10 @@ export default function StaffManagementPage() {
     };
 
     const handleDeleteStaff = async (userId: string, role: string) => {
+        if (!isAdminUser) {
+            toast('Only administrators can remove staff members', 'error');
+            return;
+        }
         if (role === 'admin_manager') return;
         if (await confirm({ title: 'Remove Staff', message: 'Permanently remove this staff member?', confirmText: 'Remove', isDangerous: true })) {
             deleteStaff.mutate(userId, {
@@ -54,7 +64,13 @@ export default function StaffManagementPage() {
                     toast('Staff member removed successfully', 'success');
                     setActionMenuId(null);
                 },
-                onError: (err: any) => toast(`Deletion failed: ${err.message}`, 'error')
+                onError: (err: any) => {
+                    if (err.message.includes('open case')) {
+                        toast(`Cannot remove: ${err.message}`, 'error');
+                    } else {
+                        toast(`Deletion failed: ${err.message}`, 'error');
+                    }
+                }
             });
         }
     };

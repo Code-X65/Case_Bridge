@@ -7,7 +7,7 @@ import {
     User, Mail, Shield, CheckCircle2,
     Save, Loader2, Link as LinkIcon, Calendar,
     Phone, Globe, Video, Building2, ChevronDown,
-    RefreshCw, X, ArrowRightLeft, AlertCircle, Clock
+    RefreshCw, X, ArrowRightLeft, Clock
 } from 'lucide-react';
 import InternalSidebar from '@/components/layout/InternalSidebar';
 import { useToast } from '@/components/common/ToastService';
@@ -81,7 +81,7 @@ export default function ProfileSettings() {
     const firmName = (profile?.firm as any)?.[0]?.firm?.name || 'Loading...';
 
     // Fetch Calendar Connections
-    const { data: connections, isLoading: isLoadingConnections } = useQuery({
+    const { data: connections } = useQuery({
         queryKey: ['calendar_connections', session?.user_id],
         enabled: !!session?.user_id,
         queryFn: async () => {

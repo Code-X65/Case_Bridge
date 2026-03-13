@@ -1,28 +1,34 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useConnectivity } from '../contexts/ConnectivityContext';
 
+export type NotificationCategory = 'matter_updates' | 'billing' | 'assignments' | 'system' | 'all';
+
 export interface Notification {
     id: string;
     event_type: string;
-    channel: 'email' | 'in_app';
+    channel: 'email' | 'in_app' | 'push';
+    category?: NotificationCategory;
     payload: {
         title: string;
         message: string;
         link?: string;
+        category?: NotificationCategory;
     };
     sent_at: string;
     read_at: string | null;
     created_at: string;
+    archived_at: string | null;
 }
 
-export function useNotifications() {
+export function useNotifications(initialCategory: NotificationCategory = 'all') {
     const { user } = useAuth();
     const { setRealtimeStatus } = useConnectivity();
     const queryClient = useQueryClient();
+    const [categoryFilter, setCategoryFilter] = useState<NotificationCategory>(initialCategory);
 
     const { data: notifications, isLoading } = useQuery({
         queryKey: ['notifications', user?.id],
@@ -32,6 +38,7 @@ export function useNotifications() {
                 .from('notifications')
                 .select('*')
                 .eq('user_id', user!.id)
+                .is('archived_at', null)
                 .order('created_at', { ascending: false });
 
             if (error) {
@@ -40,10 +47,14 @@ export function useNotifications() {
             }
             return (data || []) as Notification[];
         },
-        staleTime: 1000 * 60 * 30, // 30 minutes - relying on realtime
+        staleTime: 1000 * 60 * 30, 
     });
 
-    // Real-time subscription to notifications
+    const filteredNotifications = notifications?.filter(n => {
+        if (categoryFilter === 'all') return true;
+        return n.payload.category === categoryFilter || n.category === categoryFilter;
+    });
+
     useEffect(() => {
         if (!user?.id) return;
 
@@ -52,33 +63,13 @@ export function useNotifications() {
             .on(
                 'postgres_changes',
                 {
-                    event: 'INSERT',
+                    event: '*',
                     schema: 'public',
                     table: 'notifications',
                     filter: `user_id=eq.${user.id}`
                 },
                 (payload) => {
-                    queryClient.setQueryData(['notifications', user.id], (old: Notification[] | undefined) => {
-                        const newNotif = payload.new as Notification;
-                        if (!old) return [newNotif];
-                        if (old.find(n => n.id === newNotif.id)) return old;
-                        return [newNotif, ...old];
-                    });
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'notifications',
-                    filter: `user_id=eq.${user.id}`
-                },
-                (payload) => {
-                    queryClient.setQueryData(['notifications', user.id], (old: Notification[] | undefined) => {
-                        if (!old) return [];
-                        return old.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n);
-                    });
+                    queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
                 }
             )
             .subscribe((status, err) => {
@@ -92,7 +83,7 @@ export function useNotifications() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [user?.id, queryClient]);
+    }, [user?.id, queryClient, setRealtimeStatus]);
 
     const markAsRead = useMutation({
         mutationFn: async (id: string) => {
@@ -121,13 +112,30 @@ export function useNotifications() {
         }
     });
 
+    const archiveNotification = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase
+                .from('notifications')
+                .update({ archived_at: new Date().toISOString() })
+                .eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        }
+    });
+
     const unreadCount = notifications?.filter(n => !n.read_at).length || 0;
 
     return {
-        notifications,
+        notifications: filteredNotifications,
+        allNotifications: notifications,
         isLoading,
         unreadCount,
+        categoryFilter,
+        setCategoryFilter,
         markAsRead,
-        markAllAsRead
+        markAllAsRead,
+        archiveNotification
     };
 }

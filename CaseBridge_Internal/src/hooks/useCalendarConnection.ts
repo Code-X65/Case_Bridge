@@ -15,12 +15,6 @@ export interface CalendarConnection {
     updated_at: string;
 }
 
-interface ConnectCalendarParams {
-    provider: 'google' | 'outlook';
-    calendarId?: string;
-    syncDirection?: 'outbound' | 'inbound' | 'both';
-}
-
 export function useCalendarConnection() {
     const { session } = useInternalSession();
     const queryClient = useQueryClient();
@@ -46,7 +40,7 @@ export function useCalendarConnection() {
         mutationFn: async ({ provider }: { provider: 'google' | 'outlook' }) => {
             // Use Supabase's linkIdentity for OAuth flow
             const { error } = await supabase.auth.linkIdentity({
-                provider: provider,
+                provider: provider === 'outlook' ? 'azure' : 'google',
                 options: {
                     queryParams: {
                         access_type: 'offline',

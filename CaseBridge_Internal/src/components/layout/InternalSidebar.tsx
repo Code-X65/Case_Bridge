@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import {
     LayoutDashboard, Users, Briefcase,
     Contact2, FileText, CreditCard, BarChart3,
@@ -9,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useInternalSession } from '@/hooks/useInternalSession';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useToast } from '@/components/common/ToastService';
 
 export default function InternalSidebar() {
     const navigate = useNavigate();
@@ -44,6 +46,64 @@ export default function InternalSidebar() {
     };
 
     const { unreadCount } = useNotifications();
+    const { toast } = useToast();
+
+    // 1. REALTIME LISTENER FOR SESSION TERMINATION & ROLE CHANGES
+    useEffect(() => {
+        if (!session?.user_id || !session?.id) return;
+
+        // Listen for deletions in internal_sessions (for this specific session or user)
+        const sessionChannel = supabase
+            .channel(`session_updates_${session.user_id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'internal_sessions',
+                    filter: `user_id=eq.${session.user_id}`
+                },
+                (payload) => {
+                    // If the current session ID matches the one being deleted (or if any session for this user is deleted and we want a hard logout)
+                    if (payload.old?.id === session.id) {
+                        toast('Your session has been terminated. Account may have been suspended.', 'error');
+                        handleLogout();
+                    }
+                }
+            )
+            .subscribe();
+
+        // Listen for role_changed notifications
+        const notificationChannel = supabase
+            .channel(`user_notifications_${session.user_id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${session.user_id}`
+                },
+                (payload) => {
+                    const { event_type, payload: data } = payload.new;
+                    if (event_type === 'role_changed') {
+                        toast(`Priority Alert: ${data.message}`, 'info');
+                        // Invalidate query to refresh the session object globally
+                        queryClient.invalidateQueries({ queryKey: ['internal_session'] });
+                    }
+                    if (event_type === 'account_suspended') {
+                        toast('Security Alert: Your account and sessions have been suspended.', 'error');
+                        handleLogout();
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(sessionChannel);
+            supabase.removeChannel(notificationChannel);
+        };
+    }, [session?.user_id, session?.id]);
 
     const isActive = (path: string) => location.pathname === path;
 

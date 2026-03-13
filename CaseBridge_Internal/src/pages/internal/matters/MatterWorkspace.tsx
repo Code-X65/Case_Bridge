@@ -6,7 +6,7 @@ import { useInternalSession } from '@/hooks/useInternalSession';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Briefcase, FileText, Send, UserPlus,
-    Download, CheckCircle2, Search, Mail, Copy,
+    Download, CheckCircle2, Search,
     Clock, Shield, History, X, Check, Eye, PenTool,
     ArrowLeft, EyeOff, AlertCircle, ShieldCheck, Loader2, MessageSquare,
     Paperclip, Upload, Calendar
@@ -24,7 +24,6 @@ import SignRequestModal from '@/components/matters/SignRequestModal';
 import MatterChat from '@/components/matters/MatterChat';
 import Skeleton from '@/components/ui/Skeleton';
 import { useToast } from '@/components/common/ToastService';
-import { useConfirm } from '@/components/common/ConfirmDialogProvider';
 
 export default function MatterWorkspace() {
     const { id } = useParams();
@@ -33,7 +32,6 @@ export default function MatterWorkspace() {
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
-    const { confirm } = useConfirm();
 
     const [reportTitle, setReportTitle] = useState('');
     const [reportContent, setReportContent] = useState('');
@@ -52,16 +50,23 @@ export default function MatterWorkspace() {
     const [isClosureModalOpen, setIsClosureModalOpen] = useState(false);
     const [closureSummary, setClosureSummary] = useState('');
     const [unreadChatCount, setUnreadChatCount] = useState(0);
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    // We've unified the backend into Supabase and Edge Functions.
+    // Legacy API_URL is no longer needed for CRUD.
 
     const fetchUnreadChatCount = async () => {
         if (!id) return;
         try {
-            const response = await fetch(`${API_URL}/matters/${id}/messages/unread-count`);
-            const result = await response.json();
-            if (result.success) setUnreadChatCount(result.count || 0);
+            const { count, error } = await supabase
+                .from('matter_messages')
+                .select('*', { count: 'exact', head: true })
+                .eq('matter_id', id)
+                .is('is_read', false)
+                .neq('sender_id', session?.user_id || '');
+
+            if (error) throw error;
+            setUnreadChatCount(count || 0);
         } catch (error) {
-            console.error("Error fetching unread count from API:", error);
+            console.error("Error fetching unread count from Supabase:", error);
         }
     };
 
@@ -114,10 +119,18 @@ export default function MatterWorkspace() {
         queryKey: ['matter', id],
         enabled: !!id,
         queryFn: async () => {
-            const response = await fetch(`${API_URL}/matters/${id}`);
-            const result = await response.json();
-            if (!result.success) throw new Error(result.error || 'Failed to fetch matter');
-            return result.data;
+            const { data, error } = await supabase
+                .from('matters')
+                .select(`
+                    *,
+                    case_report:case_reports(*),
+                    assignee:profiles!assigned_associate(full_name)
+                `)
+                .eq('id', id!)
+                .single();
+
+            if (error) throw error;
+            return data;
         }
     });
 
@@ -128,20 +141,24 @@ export default function MatterWorkspace() {
         queryKey: ['matter_updates', id, page],
         enabled: !!id,
         queryFn: async () => {
-            // Internal portal needs more data (author, etc), but we can adjust the backend or use the same
-            // For now, I'll use the matter updates endpoint
-            const response = await fetch(`${API_URL}/matters/${id}/updates`);
-            const result = await response.json();
-            if (!result.success) throw new Error(result.error || 'Failed to fetch updates');
-            
-            // Note: The current internal view uses pagination (ITEMS_PER_PAGE). 
-            // I'll need to update the backend to support limit/offset if totalCount is critical.
-            // For simplicity in this massive migration, I'll return all and slice for now, 
-            // but ideally we paginate on backend.
-            const allUpdates = result.data || [];
-            return { 
-                reports: allUpdates.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE), 
-                totalCount: allUpdates.length 
+            const { data, error, count } = await supabase
+                .from('matter_updates')
+                .select(`
+                    *,
+                    author:profiles(full_name),
+                    docs:report_documents(
+                        client_visible,
+                        document:documents(id, filename, file_url)
+                    )
+                `, { count: 'exact' })
+                .eq('matter_id', id!)
+                .range(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE - 1)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return {
+                reports: data || [],
+                totalCount: count || 0
             };
         }
     });
@@ -155,10 +172,14 @@ export default function MatterWorkspace() {
         queryKey: ['matter_timeline', id],
         enabled: !!id,
         queryFn: async () => {
-            const response = await fetch(`${API_URL}/workspace/audit-logs?target_id=${id}&matter_id=${id}`);
-            const result = await response.json();
-            if (!result.success) throw new Error(result.error || 'Failed to fetch audit logs');
-            return result.data || [];
+            const { data, error } = await supabase
+                .from('audit_logs')
+                .select('*')
+                .eq('matter_id', id!)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return data || [];
         }
     });
 
@@ -167,22 +188,13 @@ export default function MatterWorkspace() {
         queryKey: ['matter_meetings', id],
         enabled: !!id,
         queryFn: async () => {
-            const response = await fetch(`${API_URL}/workspace/meetings?case_id=${id}`);
-            const result = await response.json();
-            if (!result.success) throw new Error(result.error || 'Failed to fetch meetings');
-            return result.data || [];
-        }
-    });
+            const { data, error } = await supabase
+                .from('scheduled_events')
+                .select('*, participants:event_participants(*)')
+                .eq('matter_id', id!);
 
-    // 6. Fetch Communication Logs (Roadmap #8)
-    const { data: communications } = useQuery({
-        queryKey: ['matter_communications', id],
-        enabled: !!id,
-        queryFn: async () => {
-            const response = await fetch(`${API_URL}/workspace/communications?matter_id=${id}`);
-            const result = await response.json();
-            if (!result.success) throw new Error(result.error || 'Failed to fetch communications');
-            return result.data || [];
+            if (error) throw error;
+            return data || [];
         }
     });
 
@@ -191,10 +203,13 @@ export default function MatterWorkspace() {
         queryKey: ['matter_deadlines', id],
         enabled: !!id,
         queryFn: async () => {
-            const response = await fetch(`${API_URL}/workspace/deadlines?matter_id=${id}`);
-            const result = await response.json();
-            if (!result.success) throw new Error(result.error || 'Failed to fetch deadlines');
-            return result.data || [];
+            const { data, error } = await supabase
+                .from('matter_deadlines')
+                .select('*')
+                .eq('matter_id', id!);
+
+            if (error) throw error;
+            return data || [];
         }
     });
 
@@ -203,10 +218,13 @@ export default function MatterWorkspace() {
         queryKey: ['matter_intake_docs', matter?.case_report_id],
         enabled: !!matter?.case_report_id,
         queryFn: async () => {
-            const response = await fetch(`${API_URL}/workspace/reports/documents?report_id=${matter.case_report_id}`);
-            const result = await response.json();
-            if (!result.success) throw new Error(result.error || 'Failed to fetch intake docs');
-            return result.data || [];
+            const { data, error } = await supabase
+                .from('case_report_documents')
+                .select('*')
+                .eq('case_report_id', matter!.case_report_id);
+
+            if (error) throw error;
+            return data || [];
         }
     });
 

@@ -34,7 +34,8 @@ export default function CaseGroupChat({ matterId }: CaseGroupChatProps) {
     const [isChatEnabled, setIsChatEnabled] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    // Unified Supabase-Native Architecture: 
+    // We now use direct Supabase client for all CRUD operations.
 
     const QUICK_REPLIES = [
         "Thank you!",
@@ -57,28 +58,29 @@ export default function CaseGroupChat({ matterId }: CaseGroupChatProps) {
             
             if (matterError) console.error("Error fetching matter status:", matterError);
             else setIsChatEnabled(matter?.is_chat_enabled || false);
-            // Fetch messages from the API
+            // Fetch messages directly from Supabase view
             try {
-                const response = await fetch(`${API_URL}/matters/${matterId}/messages`);
-                const result = await response.json();
+                const { data, error } = await supabase
+                    .from('matter_messages_view')
+                    .select('*')
+                    .eq('matter_id', matterId)
+                    .order('created_at', { ascending: true });
 
-                if (result.success) {
-                    const formattedMessages = (result.data || []).map((msg: any) => ({
-                        ...msg,
-                        sender: {
-                            full_name: msg.sender_name,
-                            role: msg.sender_role
-                        }
-                    }));
-                    setMessages(formattedMessages);
-                    
-                    // Mark messages as read via API
-                    await fetch(`${API_URL}/matters/${matterId}/messages/read`, {
-                        method: 'PATCH'
-                    });
-                }
+                if (error) throw error;
+
+                const formattedMessages = (data || []).map((msg: any) => ({
+                    ...msg,
+                    sender: {
+                        full_name: msg.sender_name,
+                        role: msg.sender_role
+                    }
+                }));
+                setMessages(formattedMessages);
+                
+                // Mark messages as read via RPC
+                await supabase.rpc('mark_matter_messages_read', { p_matter_id: matterId });
             } catch (error) {
-                console.error("Error fetching messages from API:", error);
+                console.error("Error fetching messages via Supabase:", error);
             }
             
             setLoading(false);
@@ -165,29 +167,22 @@ export default function CaseGroupChat({ matterId }: CaseGroupChatProps) {
 
         setSending(true);
         try {
-            const response = await fetch(`${API_URL}/matters/${matterId}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
+            const { error } = await supabase
+                .from('matter_messages')
+                .insert({
+                    matter_id: matterId,
                     sender_id: user.id,
                     content: newMessage.trim(),
                     reply_to_id: replyTo?.id || null,
-                    mentions: [] // To be implemented with mention list
-                })
-            });
+                    mentions: []
+                });
 
-            const result = await response.json();
-            
-            if (!result.success) {
-                console.error("Error sending message via API:", result.error);
-            } else {
-                setNewMessage('');
-                setReplyTo(null);
-            }
+            if (error) throw error;
+
+            setNewMessage('');
+            setReplyTo(null);
         } catch (error) {
-            console.error("Error sending message:", error);
+            console.error("Error sending message via Supabase:", error);
         } finally {
             setSending(false);
         }

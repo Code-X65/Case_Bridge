@@ -40,49 +40,36 @@ export default function MatterChat({ matterId }: MatterChatProps) {
     const [sending, setSending] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // Use API_URL from env, with development fallback
-    const API_URL = import.meta.env.VITE_API_URL || 
-        (import.meta.env.DEV ? 'http://localhost:5000/api' : undefined);
-    
-    if (!API_URL) {
-        throw new Error('VITE_API_URL is not configured. Please set it in your environment variables.');
-    }
+    // We've moved away from the Express backend and now use Supabase directly.
+    // Edge Functions are used only for complex integrations like Payments.
 
     useEffect(() => {
         const fetchMessages = async () => {
             setLoading(true);
             
-            // Fetch messages from the API
+            // Fetch messages directly from Supabase view
             try {
-                const response = await fetch(`${API_URL}/matters/${matterId}/messages`);
-                if (!response.ok) {
-                    console.error(`Failed to fetch messages: ${response.status}`);
-                    setMessages([]);
-                    setLoading(false);
-                    return;
-                }
-                const result = await response.json();
+                const { data, error } = await supabase
+                    .from('matter_messages_view')
+                    .select('*')
+                    .eq('matter_id', matterId)
+                    .order('created_at', { ascending: true });
 
-                if (result.success) {
-                    const formattedMessages = (result.data || []).map((msg: any) => ({
-                        ...msg,
-                        sender: {
-                            full_name: msg.sender_name,
-                            role: msg.sender_role
-                        }
-                    }));
-                    setMessages(formattedMessages);
-                    
-                    // Mark as read via API
-                    const readRes = await fetch(`${API_URL}/matters/${matterId}/messages/read`, {
-                        method: 'PATCH'
-                    });
-                    if (!readRes.ok) {
-                        console.error(`Failed to mark messages as read: ${readRes.status}`);
+                if (error) throw error;
+
+                const formattedMessages = (data || []).map((msg: any) => ({
+                    ...msg,
+                    sender: {
+                        full_name: msg.sender_name,
+                        role: msg.sender_role
                     }
-                }
+                }));
+                setMessages(formattedMessages);
+                
+                // Mark as read via RPC
+                await supabase.rpc('mark_matter_messages_read', { p_matter_id: matterId });
             } catch (error) {
-                console.error("Error fetching messages via API:", error);
+                console.error("Error fetching messages via Supabase:", error);
             }
             
             setLoading(false);
@@ -154,32 +141,23 @@ export default function MatterChat({ matterId }: MatterChatProps) {
 
         setSending(true);
         try {
-            const response = await fetch(`${API_URL}/matters/${matterId}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
+            const { error } = await supabase
+                .from('matter_messages')
+                .insert({
+                    matter_id: matterId,
                     sender_id: user.user_id,
                     content: newMessage,
                     reply_to_id: replyTo?.id
                 })
-            });
+                .select()
+                .single();
 
-            if (!response.ok) {
-                console.error(`Failed to send message: ${response.status}`);
-            }
+            if (error) throw error;
 
-            const result = await response.json();
-
-            if (!result.success) {
-                console.error("Error sending message via API:", result.error);
-            } else {
-                setNewMessage('');
-                setReplyTo(null);
-            }
+            setNewMessage('');
+            setReplyTo(null);
         } catch (error) {
-            console.error("Error sending message:", error);
+            console.error("Error sending message via Supabase:", error);
         } finally {
             setSending(false);
         }

@@ -1,64 +1,62 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from './ToastService';
 
 export default function NotificationDispatcher() {
     const { user } = useAuth();
     const { toast } = useToast();
-    const lastCheckRef = useRef<string>(new Date().toISOString());
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
     useEffect(() => {
         if (!user) return;
 
-        const poll = async () => {
-            if (!navigator.onLine) return; // Skip polling if offline
-
-            try {
-                // Fetch user's matter IDs for update tracking
-                const matterRes = await fetch(`${API_URL}/matters?client_id=${user.id}`);
-                const matterResult = await matterRes.json();
-                const matterIds = (matterResult.data || []).map((m: any) => m.id).join(',');
-
-                const pollRes = await fetch(
-                    `${API_URL}/workspace/poll?client_id=${user.id}&matter_ids=${matterIds}&last_check=${lastCheckRef.current}`
-                );
-                const pollResult = await pollRes.json();
-
-                if (pollResult.success) {
-                    const { notifications, updates } = pollResult.data;
-
-                    // Show alerts for new notifications
-                    notifications.forEach((n: any) => {
-                        toast(`New Notification: ${n.title}`, 'success');
-                    });
-
-                    // Show alerts for matter updates
-                    updates.forEach((u: any) => {
-                        toast(`Update on ${u.matter?.title || 'Case'}: ${u.title}`, 'info');
-                    });
-
-                    // Update last check timestamp
-                    lastCheckRef.current = pollResult.timestamp;
+        // Subscribed to both Notifications and Matter Updates
+        const notificationChannel = supabase
+            .channel(`user_notifications:${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${user.id}`
+                },
+                (payload: any) => {
+                    toast(`New Notification: ${payload.new.payload?.title || 'System Alert'}`, 'success');
                 }
-            } catch (err) {
-                // Network errors like "Failed to fetch" are common when flickering, so we suppress redundant logging
-                if (err instanceof TypeError && err.message === 'Failed to fetch') {
-                    // Suppress noisy network failure logs
-                    return;
+            )
+            .subscribe();
+
+        const updateChannel = supabase
+            .channel(`client_matter_updates:${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'matter_updates'
+                },
+                async (payload: any) => {
+                    // Only show alert if user is part of the matter
+                    const { data: matter } = await supabase
+                        .from('matters')
+                        .select('title')
+                        .eq('id', payload.new.matter_id)
+                        .eq('client_id', user.id)
+                        .single();
+
+                    if (matter) {
+                        toast(`Update on ${matter.title}: ${payload.new.title}`, 'info');
+                    }
                 }
-                console.error("Polling Error:", err);
-            }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(notificationChannel);
+            supabase.removeChannel(updateChannel);
         };
-
-        // Initial poll
-        poll();
-
-        // 10s Interval
-        const interval = setInterval(poll, 10000);
-
-        return () => clearInterval(interval);
-    }, [user, API_URL]);
+    }, [user]);
 
     return null; // Side-effect only component
 }

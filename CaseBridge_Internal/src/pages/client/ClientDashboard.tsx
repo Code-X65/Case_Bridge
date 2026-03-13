@@ -1,8 +1,11 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { LogOut, FileText, Upload, Bell, Download } from 'lucide-react';
+import { 
+    LogOut, FileText, Upload, Bell, Download, 
+    ShieldCheck, MessageSquare, ExternalLink, Clock,
+    ChevronRight, Briefcase, Activity, CheckCircle2
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/common/ToastService';
 
@@ -10,19 +13,16 @@ export default function ClientDashboard() {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [uploading, setUploading] = useState(false);
-
-    // Get Session (Direct Supabase as hook is for internal)
     const [session, setSession] = useState<any>(null);
 
-    // Initial session check
-    useState(() => {
+    useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!session) navigate('/internal/login'); // Or client login
+            if (!session) navigate('/internal/login'); 
             setSession(session);
         });
-    });
+    }, [navigate]);
 
-    // Fetch Client Profile
+    // 1. Fetch Client Profile
     const { data: profile } = useQuery({
         queryKey: ['client_profile', session?.user?.id],
         enabled: !!session?.user?.id,
@@ -32,54 +32,75 @@ export default function ClientDashboard() {
         }
     });
 
-    // Fetch My Matters
-    const { data: matters } = useQuery({
+    // 2. Fetch Firm Info (Via Profile)
+    const { data: firm } = useQuery({
+        queryKey: ['client_firm', profile?.firm_id],
+        enabled: !!profile?.firm_id,
+        queryFn: async () => {
+            const { data } = await supabase.from('firms').select('name').eq('id', profile.firm_id).single();
+            return data;
+        }
+    });
+
+    // 3. Fetch My Matters
+    const { data: matters, isLoading: loadingMatters } = useQuery({
         queryKey: ['client_matters', session?.user?.id],
         enabled: !!session?.user?.id,
         queryFn: async () => {
             const { data } = await supabase
                 .from('matters')
                 .select('*')
-                .eq('client_reference_id', session.user.id)
+                .eq('client_id', session.user.id)
                 .order('updated_at', { ascending: false });
             return data || [];
         }
     });
 
-    // Fetch Notifications
+    // 4. Fetch Notifications
     const { data: notifications } = useQuery({
         queryKey: ['client_notifications', session?.user?.id],
         enabled: !!session?.user?.id,
         queryFn: async () => {
             const { data } = await supabase
-                .from('client_notifications')
+                .from('notifications')
                 .select('*')
-                .eq('client_id', session.user.id)
-                .eq('read', false);
+                .eq('user_id', session.user.id)
+                .order('created_at', { ascending: false });
             return data || [];
         }
     });
 
-    // Upload Document Mutation
+    // 5. Fetch Client Documents
+    const { data: documents } = useQuery({
+        queryKey: ['client_documents', session?.user?.id],
+        enabled: !!session?.user?.id,
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('client_documents')
+                .select('*')
+                .eq('client_id', session.user.id)
+                .order('uploaded_at', { ascending: false });
+            return data || [];
+        }
+    });
+
+    // Document Upload Mutation
     const uploadMutation = useMutation({
         mutationFn: async (file: File) => {
-            // 1. Upload to Storage (Skipping for V1 demo, strict DB record)
-            // 2. Insert into client_documents
-            // For V1 we just insert the record
             if (!profile?.firm_id) throw new Error('No firm linked');
 
             const { error } = await supabase.from('client_documents').insert({
                 firm_id: profile.firm_id,
                 client_id: session.user.id,
                 file_name: file.name,
-                file_url: 'https://placeholder.url', // Placeholder
+                file_url: 'https://placeholder.url', // Placeholder for V1
                 file_size: file.size
             });
 
             if (error) throw error;
         },
         onSuccess: () => {
-            toast('Document uploaded successfully', 'success');
+            toast('Document submitted to your legal team', 'success');
             setUploading(false);
         }
     });
@@ -89,142 +110,235 @@ export default function ClientDashboard() {
         navigate('/internal/login');
     };
 
+    if (!session) return null;
+
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-            {/* Top Bar */}
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-                <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
+        <div className="min-h-screen bg-[#0F172A] text-white">
+            {/* 1. Navigation Header */}
+            <header className="bg-[#1E293B]/50 backdrop-blur-md border-b border-white/5 sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-10 h-20 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/20 flex items-center justify-center font-black text-white italic">
                             CB
                         </div>
-                        <span className="font-bold text-slate-900 tracking-tight">CaseBridge Client</span>
+                        <div>
+                            <span className="font-black text-xl tracking-tighter uppercase italic">My <span className="text-indigo-400">Portal</span></span>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mt-1">Institutional Client Access</p>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="relative">
-                            <Bell className="w-5 h-5 text-slate-500" />
-                            {notifications && notifications.length > 0 && (
-                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
-                            )}
-                        </div>
-                        <div className="h-6 w-px bg-slate-200"></div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-slate-600">{profile?.full_name || session?.user?.email}</span>
-                            <button onClick={handleLogout} className="text-slate-400 hover:text-red-500 transition-colors">
-                                <LogOut className="w-4 h-4" />
+                    <div className="flex items-center gap-8">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-indigo-500/10 p-2 rounded-lg border border-indigo-500/20 relative group cursor-pointer">
+                                <Bell className="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform" />
+                                {notifications && notifications.some(n => !n.read) && (
+                                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#1E293B]"></span>
+                                )}
+                            </div>
+                            <div className="h-4 w-px bg-slate-700"></div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{firm?.name || 'Authorized Firm'}</p>
+                                <p className="text-sm font-black text-white">{profile?.full_name || 'Legal Client'}</p>
+                            </div>
+                            <button onClick={handleLogout} className="p-2 text-slate-500 hover:text-red-400 transition-colors">
+                                <LogOut size={20} />
                             </button>
                         </div>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-5xl mx-auto px-6 py-10">
-
-                {/* Welcome & Stats */}
-                <div className="mb-10">
-                    <h1 className="text-3xl font-black text-slate-900 mb-2">My Portal</h1>
-                    <p className="text-slate-500">Manage your active legal matters and documents securely.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
-                        <div className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-1">Active Matters</div>
-                        <div className="text-3xl font-black text-indigo-600">{matters?.length || 0}</div>
+            <main className="max-w-7xl mx-auto px-10 py-16">
+                
+                {/* 2. Welcome & Stats Hub */}
+                <div className="mb-16">
+                    <div className="flex items-center gap-3 text-indigo-400 font-bold uppercase tracking-[0.2em] text-[10px] mb-4 bg-indigo-500/10 w-fit px-3 py-1 rounded-full border border-indigo-500/20">
+                        <ShieldCheck size={12} /> Secure Digital File Access
                     </div>
-                    <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
-                        <div className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-1">Pending Actions</div>
-                        <div className="text-3xl font-black text-yellow-500">{notifications?.length || 0}</div>
-                    </div>
-                    <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm flex items-center justify-center cursor-pointer hover:border-indigo-500 transition-colors group" onClick={() => setUploading(true)}>
-                        <div className="text-center">
-                            <Upload className="w-8 h-8 mx-auto mb-2 text-indigo-500 group-hover:scale-110 transition-transform" />
-                            <div className="font-bold text-indigo-600">Upload Document</div>
-                        </div>
-                    </div>
-                </div>
+                    <h1 className="text-5xl font-black tracking-tighter italic uppercase mb-8">
+                        Session: <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">Active</span>
+                    </h1>
 
-                {/* Active Matters */}
-                <SectionHeader title="Active Matters" />
-                <div className="space-y-4 mb-12">
-                    {matters?.length === 0 ? (
-                        <div className="p-10 text-center bg-white rounded-2xl border border-slate-200 border-dashed">
-                            <p className="text-slate-400">No active matters found.</p>
-                        </div>
-                    ) : (
-                        matters?.map((matter: any) => (
-                            <div key={matter.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="text-xl font-bold text-slate-900 mb-1">{matter.title}</h3>
-                                        <p className="text-sm text-slate-500">{matter.description || 'No description provided.'}</p>
-                                    </div>
-                                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase">
-                                        {matter.status}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
-                                    <button className="text-sm font-bold text-indigo-600 hover:underline flex items-center gap-1">
-                                        <FileText className="w-4 h-4" /> View Details
-                                    </button>
-                                    <button className="text-sm font-bold text-slate-500 hover:text-slate-700 flex items-center gap-1">
-                                        <Download className="w-4 h-4" /> Download Files
-                                    </button>
-                                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div className="bg-[#1E293B] border border-white/10 p-8 rounded-[2rem] shadow-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
+                                <Briefcase className="w-20 h-20 text-indigo-400" />
                             </div>
-                        ))
-                    )}
+                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Active Matters</p>
+                            <p className="text-4xl font-black text-white">{matters?.length || 0}</p>
+                        </div>
+
+                        <div className="bg-[#1E293B] border border-white/10 p-8 rounded-[2rem] shadow-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-5">
+                                <CheckCircle2 className="w-20 h-20 text-emerald-400" />
+                            </div>
+                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Pending Actions</p>
+                            <p className="text-4xl font-black text-emerald-400">0</p>
+                        </div>
+
+                        <div className="bg-[#1E293B] border border-white/10 p-8 rounded-[2rem] shadow-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-5">
+                                <Bell className="w-20 h-20 text-indigo-400" />
+                            </div>
+                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Legal Updates</p>
+                            <p className="text-4xl font-black text-white">{notifications?.filter(n => !n.read).length || 0}</p>
+                        </div>
+
+                        <div className="bg-indigo-600 shadow-xl shadow-indigo-600/20 p-8 rounded-[2rem] relative overflow-hidden cursor-pointer group hover:bg-indigo-700 transition-all" onClick={() => setUploading(true)}>
+                            <div className="absolute top-0 right-0 p-4 opacity-20">
+                                <Upload className="w-16 h-16 text-white" />
+                            </div>
+                            <h3 className="text-lg font-black uppercase tracking-tight italic mb-1">Secure Upload</h3>
+                            <p className="text-xs text-indigo-100 font-bold max-w-[120px]">Submit documents to your team</p>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Notifications */}
-                <SectionHeader title="Recent Notifications" />
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden mb-12">
-                    {notifications?.length === 0 ? (
-                        <div className="p-8 text-center">
-                            <p className="text-slate-400">You are all caught up.</p>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-slate-100">
-                            {notifications?.map((notif: any) => (
-                                <div key={notif.id} className="p-4 flex gap-4 hover:bg-slate-50">
-                                    <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2"></div>
-                                    <div>
-                                        <p className="font-medium text-slate-900">{notif.message}</p>
-                                        <p className="text-xs text-slate-400">{new Date(notif.created_at).toLocaleDateString()}</p>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                    {/* 3. Matter Portfolio */}
+                    <div className="lg:col-span-2 space-y-12">
+                        <div>
+                            <div className="flex items-center justify-between mb-8">
+                                <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 italic">
+                                    <Activity size={16} className="text-indigo-400" /> Legal Matter Portfolio
+                                </h2>
+                                <button className="text-[10px] font-black text-indigo-400 uppercase tracking-widest hover:text-white transition-colors">Case History <ChevronRight size={10} className="inline ml-1"/></button>
+                            </div>
+
+                            <div className="space-y-6">
+                                {loadingMatters ? (
+                                    <div className="py-20 text-center animate-pulse text-slate-700 font-black uppercase tracking-[0.5em]">Syncing File...</div>
+                                ) : matters?.length === 0 ? (
+                                    <div className="bg-[#1E293B]/30 border border-white/5 border-dashed rounded-[2rem] p-20 text-center">
+                                        <p className="text-slate-600 font-black uppercase tracking-widest">No active cases registered.</p>
                                     </div>
-                                </div>
-                            ))}
+                                ) : (
+                                    matters?.map((matter: any) => (
+                                        <div key={matter.id} className="bg-[#1E293B] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl hover:border-indigo-500/30 transition-all group">
+                                            <div className="flex justify-between items-start mb-6">
+                                                <div>
+                                                    <h3 className="text-2xl font-black tracking-tight italic uppercase mb-2 group-hover:text-indigo-400 transition-colors">
+                                                        {matter.title}
+                                                    </h3>
+                                                    <p className="text-slate-400 text-sm max-w-xl font-medium leading-relaxed">
+                                                        {matter.description || 'Institutional case summary is currently being drafted by your legal team.'}
+                                                    </p>
+                                                </div>
+                                                <span className="bg-indigo-500/10 text-indigo-400 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-500/20">
+                                                    {matter.status}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-6 pt-6 border-t border-white/5">
+                                                <button className="text-[10px] font-black uppercase tracking-[0.2em] text-white hover:text-indigo-400 transition-colors flex items-center gap-2">
+                                                    <FileText size={14} className="text-indigo-400" /> View Detailed File
+                                                </button>
+                                                <div className="h-3 w-px bg-slate-700"></div>
+                                                <button className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-white transition-colors flex items-center gap-2">
+                                                    <MessageSquare size={14} /> Contact Counsel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
-                    )}
+
+                        {/* 4. Document Hub */}
+                        <div className="bg-[#1E293B] border border-white/10 rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden">
+                            <h3 className="text-2xl font-black tracking-tighter italic uppercase mb-10 border-b border-white/5 pb-8 flex items-center gap-3">
+                                Shared Assets <Download size={24} className="text-indigo-400" />
+                            </h3>
+                            <div className="space-y-6">
+                                {documents && documents.length > 0 ? (
+                                    documents.map((doc: any) => (
+                                        <div key={doc.id} className="flex items-center justify-between p-6 bg-white/5 rounded-3xl border border-white/5 hover:border-indigo-500/20 transition-all group">
+                                            <div className="flex items-center gap-6">
+                                                <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                                    <FileText size={20} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-black text-white uppercase tracking-tight">{doc.file_name}</h4>
+                                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">
+                                                        {(doc.file_size / 1024).toFixed(1)} KB • {new Date(doc.uploaded_at).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button className="p-3 bg-white/5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition-all">
+                                                <Download size={18} />
+                                            </button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-10 opacity-30 text-[10px] font-black uppercase tracking-widest">Document Vault Empty</div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 5. Sidbar: Activity Feed */}
+                    <div className="space-y-8">
+                        <div className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] border border-white/10 rounded-[2rem] p-10 shadow-2xl">
+                            <h3 className="text-xs font-black uppercase tracking-[0.3em] text-indigo-400 mb-10 flex items-center justify-between italic">
+                                System Activity <Clock size={16} />
+                            </h3>
+                            <div className="space-y-8 relative">
+                                <div className="absolute left-[7px] top-0 bottom-0 w-px bg-white/5"></div>
+                                {notifications && notifications.length > 0 ? (
+                                    notifications.slice(0, 6).map((notif: any) => (
+                                        <div key={notif.id} className="relative pl-10 group cursor-default">
+                                            <div className="absolute left-0 top-1 w-4 h-4 rounded-full border-2 border-indigo-500 bg-[#1E293B] z-10 group-hover:bg-indigo-500 transition-colors" />
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1 italic">
+                                                {new Date(notif.created_at).toLocaleDateString()}
+                                            </p>
+                                            <p className="text-xs font-bold text-white leading-relaxed group-hover:text-indigo-400 transition-colors">
+                                                {notif.message}
+                                            </p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-[10px] text-center text-slate-700 font-black uppercase tracking-widest py-10">All clear</p>
+                                )}
+                            </div>
+                            <button className="w-full mt-10 p-4 border border-white/5 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-white hover:bg-white/5 transition-all">Load Full History</button>
+                        </div>
+
+                        {/* Quick Link Card */}
+                        <div className="bg-gradient-to-tr from-cyan-600/20 to-indigo-600/20 border border-indigo-500/20 rounded-[2rem] p-10 relative overflow-hidden">
+                            <h4 className="text-lg font-black uppercase tracking-tight italic mb-4">Direct Channel</h4>
+                            <p className="text-xs text-slate-400 font-medium leading-relaxed mb-6">Need immediate assistance? Connect directly with your assigned Case Manager.</p>
+                            <button className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2">
+                                Open Secure Chat <ExternalLink size={12} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </main>
 
-            {/* Upload Modal (Simplified) */}
+            {/* 6. Upload Interface */}
             {uploading && (
-                <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
-                        <h3 className="text-xl font-bold mb-4 text-slate-900">Upload Secure Document</h3>
-                        <div className="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center mb-6 hover:bg-slate-50 hover:border-indigo-400 transition-colors cursor-pointer">
-                            <Upload className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-                            <p className="text-slate-500 font-medium">Click to select files</p>
-                            <p className="text-xs text-slate-400 mt-1">PDF, DOCX, JPG up to 10MB</p>
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-8 backdrop-blur-md">
+                    <div className="bg-[#1E293B] border border-white/10 rounded-[3rem] p-12 max-w-xl w-full shadow-2xl relative">
+                        <h3 className="text-3xl font-black italic uppercase tracking-tighter mb-4">Secure Transfer</h3>
+                        <p className="text-slate-400 text-sm font-medium mb-10 italic">Upload sensitive documents directly to our encrypted storage vaults.</p>
+                        
+                        <div className="border-2 border-dashed border-white/5 rounded-3xl p-16 text-center mb-10 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all cursor-pointer group">
+                            <Upload className="w-16 h-16 text-slate-700 mx-auto mb-6 group-hover:text-indigo-500 transition-colors" />
+                            <p className="text-white font-black uppercase tracking-widest text-sm">Select Institutional Data</p>
+                            <p className="text-[10px] text-slate-600 font-black uppercase tracking-widest mt-2">Maximum 50MB per file</p>
                         </div>
-                        <div className="flex justify-end gap-3">
-                            <button onClick={() => setUploading(false)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancel</button>
-                            <button onClick={() => uploadMutation.mutate({ name: 'Simulated File', size: 1024 } as File)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg">Upload</button>
+
+                        <div className="flex justify-end gap-6">
+                            <button onClick={() => setUploading(false)} className="px-8 py-3 font-black text-slate-500 uppercase tracking-widest text-xs hover:text-white transition-colors">Discard</button>
+                            <button 
+                                onClick={() => uploadMutation.mutate({ name: 'Financial_Records_2026.pdf', size: 2048576 } as File)}
+                                className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-indigo-600/20 transition-all"
+                            >
+                                Initiate Sync
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
-        </div>
-    );
-}
-
-function SectionHeader({ title }: { title: string }) {
-    return (
-        <div className="flex items-center gap-4 mb-6">
-            <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-            <div className="h-px bg-slate-200 flex-1"></div>
         </div>
     );
 }

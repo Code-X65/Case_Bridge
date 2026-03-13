@@ -14,12 +14,11 @@ import {
     Loader2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useNotifications } from '../hooks/useNotifications';
 
 export default function Dashboard() {
     const { user } = useAuth();
     const navigate = useNavigate();
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
     const { data: dashboardData, isLoading } = useQuery({
         queryKey: ['dashboard', user?.id],
         enabled: !!user,
@@ -31,33 +30,30 @@ export default function Dashboard() {
                 .eq('id', user!.id)
                 .single();
 
-            // 2. Fetch Matters & Reports with error handling
-            const [reportsRes, mattersRes, notifsRes, sigRes] = await Promise.all([
-                fetch(`${API_URL}/workspace/reports?client_id=${user!.id}`),
-                fetch(`${API_URL}/matters?client_id=${user!.id}`),
-                fetch(`${API_URL}/workspace/notifications?client_id=${user!.id}&limit=5`),
-                fetch(`${API_URL}/workspace/signatures?client_id=${user!.id}&status=pending`)
-            ]);
-
-            // Parse responses with error handling
-            const parseJson = async (res: Response) => {
-                if (!res.ok) {
-                    console.error(`API error: ${res.status} ${res.statusText}`);
-                    return { success: false, data: [] };
-                }
-                return res.json();
-            };
-
-            const [reportsResult, mattersResult, notifsResult, sigResult] = await Promise.all([
-                parseJson(reportsRes),
-                parseJson(mattersRes),
-                parseJson(notifsRes),
-                parseJson(sigRes)
+            // 2. Fetch Data directly from Supabase
+            const [reportsRes, mattersRes, sigRes] = await Promise.all([
+                supabase
+                    .from('case_reports')
+                    .select('*')
+                    .eq('client_id', user!.id)
+                    .order('created_at', { ascending: false }),
+                supabase
+                    .from('matters')
+                    .select('*')
+                    .eq('client_id', user!.id)
+                    .order('created_at', { ascending: false }),
+                supabase
+                    .from('signature_requests')
+                    .select('*, document:document_id(id, filename)')
+                    .eq('client_id', user!.id)
+                    .eq('status', 'pending')
             ]);
 
             // Deduplicate: If a matter exists for a report, hide the report
-            const mattersData = mattersResult.data || [];
-            const casesData = reportsResult.data || [];
+            const mattersData = mattersRes.data || [];
+            const casesData = reportsRes.data || [];
+            const sigsData = sigRes.data || [];
+
             const convertedReportIds = new Set(mattersData.map((m: any) => m.case_report_id).filter(Boolean));
             const uniqueReports = casesData.filter((r: any) => !convertedReportIds.has(r.id));
             
@@ -68,8 +64,7 @@ export default function Dashboard() {
             return {
                 userName: profile?.first_name || user?.user_metadata?.first_name || 'Client',
                 cases: allCombined,
-                activity: notifsResult.data || [],
-                pendingSignatures: sigResult.data || []
+                pendingSignatures: sigsData
             };
         }
     });
@@ -83,7 +78,8 @@ export default function Dashboard() {
         );
     }
 
-    const { userName, cases, activity, pendingSignatures } = dashboardData || { userName: '', cases: [], activity: [], pendingSignatures: [] };
+    const { allNotifications: activity = [] } = useNotifications();
+    const { userName, cases, pendingSignatures } = dashboardData || { userName: '', cases: [], pendingSignatures: [] };
     const hasCases = cases.length > 0;
 
     return (
@@ -293,9 +289,10 @@ export default function Dashboard() {
                                                     <Bell size={18} />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-bold text-foreground mb-1 mt-0.5 truncate group-hover:text-primary transition-colors">{item.message}</p>
+                                                    <p className="text-sm font-bold text-foreground mb-1 mt-0.5 truncate group-hover:text-primary transition-colors">{item.payload?.title || item.event_type}</p>
+                                                    <p className="text-[10px] text-muted-foreground line-clamp-1 mb-2">{item.payload?.message}</p>
                                                     <div className="flex items-center gap-2 mt-2">
-                                                        {item.read === false && (
+                                                        {!item.read_at && (
                                                             <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0"></span>
                                                         )}
                                                         <span className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase">
